@@ -1,0 +1,169 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  phone    String  @unique @db.VarChar(16)
+  name     String? @db.VarChar(128)
+  password String  @db.VarChar(128)
+
+  roleId      String       @map("role_id") @db.Uuid
+  role        Role         @relation(fields: [roleId], references: [id])
+  permissions Permission[]
+}
+
+model Role {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name  String @unique
+  users User[]
+}
+
+model Service {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name      String     @unique
+  baseUrl   String
+  endpoints Endpoint[]
+}
+
+model Endpoint {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  serviceId   String       @db.Uuid
+  service     Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name        String
+  path        String       @unique
+  method      String
+  permissions Permission[]
+}
+
+model Permission {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpointId String   @db.Uuid
+  endpoint   Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  canAccess  Boolean  @default(false)
+}
+
+model Order {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name              String?   @db.VarChar(128)
+  phone             String?   @db.VarChar(16)
+  comment           String?   @db.VarChar(256)
+  endDateJob        DateTime? @map("end_date_job")
+  workerArrivalDate DateTime? @map("worker_arrival_date")
+
+  total      String? @db.VarChar(128)
+  prePayment String? @map("pre_payment") @db.VarChar(128)
+  dueAmount  String? @map("due_amount") @db.VarChar(128)
+
+  regionId  String @map("region_id") @db.Uuid
+  region    Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  longitude Float?
+  latitude  Float?
+
+  socialId String @map("social_id") @db.Uuid
+  social   Social @relation(fields: [socialId], references: [id], onDelete: Cascade)
+
+  orderStatusId String      @map("order_status_id") @db.Uuid
+  orderStatus   OrderStatus @relation(fields: [orderStatusId], references: [id], onDelete: Cascade)
+
+  statusId String @map("status_id") @db.Uuid
+  status   Status @relation(fields: [statusId], references: [id], onDelete: Cascade)
+
+  roomMeasurement RoomMeasurement[]
+}
+
+model Status {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name  String @unique @db.VarChar(128)
+  color Int?   @default(0) @db.Integer
+
+  orders Order[]
+}
+
+model OrderStatus {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name  String @unique @db.VarChar(128)
+  color Int?   @default(0) @db.Integer
+
+  orders Order[]
+
+  @@map("order_status")
+}
+
+model Region {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name String @unique @db.VarChar(128)
+
+  orders Order[]
+}
+
+model Social {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name String @unique @db.VarChar(128)
+
+  orders Order[]
+}
+
+model RoomMeasurement {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name  String @db.VarChar(128)
+  key   String @db.VarChar(128)
+  value String @db.VarChar(128)
+
+  orderId String @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("room_measurement")
+}
+
+model PermissionAll {
+  id     String  @id @default(uuid())
+  path   String  @unique
+  get    Boolean @default(false)
+  post   Boolean @default(false)
+  patch  Boolean @default(false)
+  delete Boolean @default(false)
+
+  @@map("permission_all")
+}
