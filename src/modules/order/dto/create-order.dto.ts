@@ -18,7 +18,7 @@ export enum Status {
 }
 
 export class CreateOrderDto {
-  @ApiPropertyOptional({ description: 'Client name', example: 'Devorga suvoq' })
+  @ApiPropertyOptional({ description: 'Client name', example: 'Ravshanbek' })
   @IsOptional()
   @IsString()
   name?: string;

@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import {
@@ -25,6 +26,7 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiExtraModels,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { User } from 'src/common/decorators/get-user.decarator';
 
@@ -46,13 +48,47 @@ export class OrderController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all orders' })
-  @ApiOkResponse({
-    description: 'List of orders retrieved successfully',
-    type: ResponseOrderPosDto,
-  })
-  findAll(@User() user: {sub: string, role: string}): Promise<IResponse> {
-    return this.orderService.findAll(user.role);
+  @ApiOperation({ summary: 'Get all orders with filters and pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiQuery({ name: 'region', required: false, type: String, description: 'Search by region name' })
+  @ApiQuery({ name: 'social', required: false, type: String, description: 'Search by social name' })
+  @ApiQuery({ name: 'orderStatus', required: false, type: String, description: 'Search by order status' })
+  @ApiQuery({ name: 'name', required: false, type: String, description: 'Search by client name' })
+  @ApiQuery({ name: 'phone', required: false, type: String, description: 'Search by phone number' })
+  @ApiQuery({ name: 'status', required: false, type: String, description: 'Search by status' })
+  @ApiQuery({ name: 'startDate', required: false, type: String, description: 'Filter by start date (createdAt)' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, description: 'Filter by end date (createdAt)' })
+  @ApiQuery({ name: 'endDateJob', required: false, type: String, description: 'Filter by end date of job' })
+  @ApiQuery({ name: 'workerArrivalDate', required: false, type: String, description: 'Filter by worker arrival date' })
+  findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('region') region?: string,
+    @Query('social') social?: string,
+    @Query('orderStatus') orderStatus?: string,
+    @Query('name') name?: string,
+    @Query('phone') phone?: string,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('endDateJob') endDateJob?: string,
+    @Query('workerArrivalDate') workerArrivalDate?: string,
+  ) {
+    return this.orderService.findAll({
+      page,
+      limit,
+      region,
+      social,
+      orderStatus,
+      name,
+      phone,
+      status,
+      startDate,
+      endDate,
+      endDateJob,
+      workerArrivalDate,
+    });
   }
 
   @Get(':id')

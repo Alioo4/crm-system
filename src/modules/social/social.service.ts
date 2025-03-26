@@ -9,7 +9,7 @@ export class SocialService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createSocialDto: CreateSocialDto) {
-    const isExist = await this.prisma.region.count({
+    const isExist = await this.prisma.social.count({
       where: { name: createSocialDto.name },
     });
 
@@ -19,10 +19,10 @@ export class SocialService {
       );
     }
 
-    const region = await this.prisma.region.create({
+    const social = await this.prisma.social.create({
       data: { name: createSocialDto.name },
     });
-    return new ResponseDto(true, 'Sucessfully created', region);
+    return new ResponseDto(true, 'Sucessfully created', social);
   }
 
   async findAll(name?: string, page: number = 1, limit: number = 10) {
@@ -38,7 +38,7 @@ export class SocialService {
       this.prisma.social.count({ where }),
     ]);
 
-    return new ResponseDto(true, 'Regions fetched successfully', {
+    return new ResponseDto(true, 'Social fetched successfully', {
       data,
       total,
       page,
@@ -48,7 +48,7 @@ export class SocialService {
   }
 
   async findOne(id: string) {
-    const isExist = await this.prisma.region.findUnique({
+    const isExist = await this.prisma.social.findUnique({
       where: { id },
     });
 
@@ -62,7 +62,7 @@ export class SocialService {
   }
 
   async update(id: string, updateSocialDto: UpdateSocialDto) {
-    const isExist = await this.prisma.region.count({
+    const isExist = await this.prisma.social.count({
       where: { id },
     });
 
@@ -72,7 +72,7 @@ export class SocialService {
       );
     }
 
-    await this.prisma.region.update({
+    await this.prisma.social.update({
       where: { id },
       data: {
         name: updateSocialDto.name,
@@ -86,7 +86,7 @@ export class SocialService {
   }
 
   async remove(id: string) {
-    const isExist = await this.prisma.region.count({
+    const isExist = await this.prisma.social.count({
       where: { id },
     });
 
@@ -96,7 +96,7 @@ export class SocialService {
       );
     }
 
-    await this.prisma.region.delete({ where: { id } });
+    await this.prisma.social.delete({ where: { id } });
     return new ResponseDto(true, 'Sucessfullyty deleted');
   }
 }
