@@ -16,54 +16,7 @@ model User {
   phone    String  @unique @db.VarChar(16)
   name     String? @db.VarChar(128)
   password String  @db.VarChar(128)
-
-  roleId      String       @map("role_id") @db.Uuid
-  role        Role         @relation(fields: [roleId], references: [id])
-  permissions Permission[]
-}
-
-model Role {
-  id        String   @id @default(uuid()) @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  name  String @unique
-  users User[]
-}
-
-model Service {
-  id        String   @id @default(uuid()) @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  name      String     @unique
-  baseUrl   String
-  endpoints Endpoint[]
-}
-
-model Endpoint {
-  id        String   @id @default(uuid()) @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  serviceId   String       @db.Uuid
-  service     Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  name        String
-  path        String       @unique
-  method      String
-  permissions Permission[]
-}
-
-model Permission {
-  id        String   @id @default(uuid()) @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  userId     String   @db.Uuid
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  endpointId String   @db.Uuid
-  endpoint   Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
-  canAccess  Boolean  @default(false)
+  role     Role    @default(MANAGER)
 }
 
 model Order {
@@ -76,6 +29,7 @@ model Order {
   comment           String?   @db.VarChar(256)
   endDateJob        DateTime? @map("end_date_job")
   workerArrivalDate DateTime? @map("worker_arrival_date")
+  status            Status    @default(MANAGER)
 
   total      String? @db.VarChar(128)
   prePayment String? @map("pre_payment") @db.VarChar(128)
@@ -92,21 +46,7 @@ model Order {
   orderStatusId String      @map("order_status_id") @db.Uuid
   orderStatus   OrderStatus @relation(fields: [orderStatusId], references: [id], onDelete: Cascade)
 
-  statusId String @map("status_id") @db.Uuid
-  status   Status @relation(fields: [statusId], references: [id], onDelete: Cascade)
-
   roomMeasurement RoomMeasurement[]
-}
-
-model Status {
-  id        String   @id @default(uuid()) @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  name  String @unique @db.VarChar(128)
-  color Int?   @default(0) @db.Integer
-
-  orders Order[]
 }
 
 model OrderStatus {
@@ -129,7 +69,8 @@ model Region {
 
   name String @unique @db.VarChar(128)
 
-  orders Order[]
+  orders  Order[]
+  History History[]
 }
 
 model Social {
@@ -139,7 +80,8 @@ model Social {
 
   name String @unique @db.VarChar(128)
 
-  orders Order[]
+  orders  Order[]
+  History History[]
 }
 
 model RoomMeasurement {
@@ -157,6 +99,32 @@ model RoomMeasurement {
   @@map("room_measurement")
 }
 
+model History {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name              String?   @db.VarChar(128)
+  phone             String?   @db.VarChar(16)
+  comment           String?   @db.VarChar(256)
+  endDateJob        DateTime? @map("end_date_job")
+  workerArrivalDate DateTime? @map("worker_arrival_date")
+  status            Status
+  orderId           String    @db.Uuid
+
+  total      String? @db.VarChar(128)
+  prePayment String? @map("pre_payment") @db.VarChar(128)
+  dueAmount  String? @map("due_amount") @db.VarChar(128)
+
+  regionId  String @map("region_id") @db.Uuid
+  region    Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  longitude Float?
+  latitude  Float?
+
+  socialId String @map("social_id") @db.Uuid
+  social   Social @relation(fields: [socialId], references: [id], onDelete: Cascade)
+}
+
 model PermissionAll {
   id     String  @id @default(uuid())
   path   String  @unique
@@ -166,4 +134,21 @@ model PermissionAll {
   delete Boolean @default(false)
 
   @@map("permission_all")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  ZAMIR
+  ZAVOD
+  USTANOVCHIK
+}
+
+enum Status {
+  MANAGER
+  ZAMIR
+  ZAVOD
+  USTANOVCHIK
+  DONE
+  CANCEL
 }
