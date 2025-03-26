@@ -3,6 +3,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { IResponse, ResponseDto } from 'src/common/types';
+import { Status } from '@prisma/client';
 
 @Injectable()
 export class OrderService {
@@ -20,14 +21,28 @@ export class OrderService {
       return new ResponseDto(true, 'All orders', orders);
     }
 
-    const status = await this.prisma.status.findUnique({
-      where: { name: role },
-      select: { id: true },
-    });
-
     const orders = await this.prisma.order.findMany({
-      where: { statusId: status?.id },
-      select: { orderStatus: false, id: true, status: true }
+      where: { status: role as Status },
+      select: {
+        orderStatus: false,
+        id: true,
+        name: true,
+        phone: true,
+        comment: true,
+        workerArrivalDate: true,
+        endDateJob: true,
+        status: true,
+        region: true,
+        social: true,
+        roomMeasurement: true,
+        latitude: true,
+        longitude: true,
+        total: true,
+        prePayment: true,
+        dueAmount: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     return new ResponseDto(true, 'All orders', orders);
   }
@@ -49,32 +64,26 @@ export class OrderService {
     updateOrderDto: UpdateOrderDto,
     role: string,
   ): Promise<IResponse> {
-    const { comment, endDateJob, statusId } = updateOrderDto;
-
-    const findOrder = await this.prisma.order.findUnique({
-      where: { id },
-    });
-
+    const { comment, endDateJob, status } = updateOrderDto;
+  
+    const findOrder = await this.prisma.order.findUnique({ where: { id } });
+  
     if (!findOrder) {
       throw new NotFoundException(new ResponseDto(false, 'Order not found'));
     }
-
-    if (role === 'ADMIN' || role === 'MANAGER') {
-      const order = await this.prisma.order.update({
-        where: { id },
-        data: updateOrderDto,
-      });
-
-      return new ResponseDto(true, 'Order updated successfully', order);
-    }
-
+  
+    const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
+  
+    const updateData = isAdminOrManager ? updateOrderDto : { comment, endDateJob, status };
+  
     const order = await this.prisma.order.update({
       where: { id },
-      data: { comment, endDateJob, statusId },
+      data: updateData,
     });
-
+  
     return new ResponseDto(true, 'Order updated successfully', order);
   }
+  
 
   async remove(id: string): Promise<IResponse> {
     const findOrder = await this.prisma.order.findUnique({

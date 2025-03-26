@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -14,18 +14,7 @@ async function main() {
         get: false,
         post: true,
         patch: false,
-        delete: false
-      },
-    }),
-    prisma.permissionAll.upsert({
-      where: { path: 'location' },
-      update: {},
-      create: {
-        path: 'location',
-        get: true,
-        post: false,
-        patch: true,
-        delete: false
+        delete: false,
       },
     }),
     prisma.permissionAll.upsert({
@@ -36,7 +25,7 @@ async function main() {
         get: true,
         post: false,
         patch: true,
-        delete: false
+        delete: false,
       },
     }),
     prisma.permissionAll.upsert({
@@ -47,42 +36,61 @@ async function main() {
         get: true,
         post: false,
         patch: true,
-        delete: false
+        delete: false,
       },
     }),
     prisma.permissionAll.upsert({
-      where: { path: 'price-order' },
+      where: { path: 'history' },
       update: {},
       create: {
-        path: 'price-order',
+        path: 'history',
+        get: true,
+        post: false,
+        patch: false,
+        delete: false,
+      },
+    }),
+    prisma.permissionAll.upsert({
+      where: { path: 'regions' },
+      update: {},
+      create: {
+        path: 'regions',
+        get: true,
+        post: false,
+        patch: false,
+        delete: false,
+      },
+    }),
+    prisma.permissionAll.upsert({
+      where: { path: 'room-meansurement' },
+      update: {},
+      create: {
+        path: 'room-meansurement',
         get: true,
         post: false,
         patch: true,
-        delete: false
+        delete: false,
       },
     }),
     prisma.permissionAll.upsert({
-      where: { path: 'roles' },
+      where: { path: 'social' },
       update: {},
       create: {
-        path: 'roles',
+        path: 'social',
         get: true,
         post: false,
         patch: false,
-        delete: false
+        delete: false,
       },
     }),
-    prisma.permissionAll.upsert({
-      where: { path: 'status' },
-      update: {},
-      create: {
-        path: 'status',
-        get: true,
-        post: false,
-        patch: false,
-        delete: false
-      },
-    }),
+    prisma.user.create({
+      data: {
+        phone: '998332218888',
+        role: Role.ADMIN,
+        password: '8888',
+        name: 'Quvonchbek'
+      }
+    })
   ]);
 
   console.log('✅ Service va Endpoint lar yuklandi!');

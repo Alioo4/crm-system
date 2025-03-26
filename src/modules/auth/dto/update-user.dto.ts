@@ -1,9 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+
+export enum Role {
+  ADMIN = 'ADMIN',
+  MANAGER = 'MANAGER',
+  ZAMIR = 'ZAMIR',
+  ZAVOD = 'ZAVOD',
+  USTANOVCHIK = 'USTANOVCHIK',
+}
 
 export class UpdateUserDto {
   @ApiProperty({
-    example: '+998990090909',
+    example: '998990090909',
     description: 'Enter your phone number 📱, max length 16',
     required: false,
   })
@@ -33,12 +41,12 @@ export class UpdateUserDto {
   password?: string;
 
   @ApiProperty({
-    example: '33f650cb-660d-48c1-9d34-82b22bcd631d',
-    description: 'Enter your roleId',
+    example: Role.ADMIN,
+    enum: Role,
+    description: 'Select your role',
     required: false,
   })
-  @IsUUID()
-  @IsString()
-  @IsOptional() 
-  roleId?: string;
+  @IsEnum(Role)
+  @IsOptional()
+  role?: Role;
 }

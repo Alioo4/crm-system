@@ -29,7 +29,7 @@ import {
 import { User } from 'src/common/decorators/get-user.decarator';
 
 @ApiBearerAuth()
-@ApiTags('order')
+@ApiTags('Order')
 @ApiExtraModels(ResponseDto)
 @Controller('order')
 export class OrderController {

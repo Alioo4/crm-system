@@ -5,27 +5,31 @@ import {
   IsUUID,
   IsNumber,
   IsDateString,
+  IsEnum,
 } from 'class-validator';
 
+export enum Status {
+  MANAGER = 'MANAGER',
+  ZAMIR = 'ZAMIR',
+  ZAVOD = 'ZAVOD',
+  USTANOVCHIK = 'USTANOVCHIK',
+  DONE = 'DONE',
+  CANCEL = 'CANCEL',
+}
+
 export class CreateOrderDto {
-  @ApiPropertyOptional({
-    description: 'Client name',
-    example: 'Devorga suvoq',
-  })
+  @ApiPropertyOptional({ description: 'Client name', example: 'Devorga suvoq' })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({
-    description: 'Phone number',
-    example: '998901234567',
-  })
+  @ApiPropertyOptional({ description: 'Phone number', example: '998901234567' })
   @IsOptional()
   @IsString()
   phone?: string;
 
   @ApiPropertyOptional({
-    description: 'commit',
+    description: 'Comment',
     example: 'Iltimos, ertalab 9 da keling',
   })
   @IsOptional()
@@ -48,20 +52,20 @@ export class CreateOrderDto {
   @IsDateString()
   workerArrivalDate?: Date;
 
-  @ApiPropertyOptional({ description: 'Total price', example: '1200000' })
+  @ApiPropertyOptional({ description: 'Total price', example: 1200000 })
   @IsOptional()
-  @IsString()
-  total?: string;
+  @IsNumber()
+  total?: number;
 
-  @ApiPropertyOptional({ description: 'Pre-payment', example: '500000' })
+  @ApiPropertyOptional({ description: 'Pre-payment', example: 500000 })
   @IsOptional()
-  @IsString()
-  prePayment?: string;
+  @IsNumber()
+  prePayment?: number;
 
-  @ApiPropertyOptional({ description: 'Due-amount', example: '700000' })
+  @ApiPropertyOptional({ description: 'Due-amount', example: 700000 })
   @IsOptional()
-  @IsString()
-  dueAmount?: string;
+  @IsNumber()
+  dueAmount?: number;
 
   @ApiProperty({
     description: 'Region Id',
@@ -96,10 +100,11 @@ export class CreateOrderDto {
 
   @ApiProperty({
     description: 'Status',
-    example: '550e8400-e29b-41d4-a716-446655440003',
+    example: Status.MANAGER,
+    enum: Status,
   })
-  @IsUUID()
-  statusId!: string;
+  @IsEnum(Status)
+  status!: Status;
 }
 
 export class ResponseOrderPosDto<T = any> {

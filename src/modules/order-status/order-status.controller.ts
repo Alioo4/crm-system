@@ -15,7 +15,7 @@ import { IResponse } from 'src/common/types';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiBearerAuth()
-@ApiTags('order-status')
+@ApiTags('Order-status')
 @Controller('order-status')
 export class OrderStatusController {
   constructor(private readonly orderStatusService: OrderStatusService) {}

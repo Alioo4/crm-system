@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { Role } from '@prisma/client';
 import { Request } from 'express';
 import { PrismaService } from 'src/modules/prisma/prisma.service';
 
@@ -44,7 +45,7 @@ export class JwtAuthGuard implements CanActivate {
 
       request.user = payload;
 
-      if (payload.role === 'ADMIN') {
+      if (payload.role === Role.ADMIN || payload.role === Role.MANAGER) {
         return true;
       }
     } catch (error) {

@@ -18,14 +18,12 @@ export class AuthService {
   async login(userData: LoginDto) {
     const findUser = await this.prisma.user.findUnique({
       where: { phone: userData.phone },
-      select: { id: true, password: true, roleId: true },
+      select: { id: true, password: true, role: true },
     });
 
     if (!findUser) {
       throw new BadRequestException('User not found');
     }
-
-    const findRole = await this.prisma.role.findUnique({where: {id: findUser.roleId}, select: {name: true}})
 
     const isPasswordValid: boolean = await this.checkPass(
       userData.password,
@@ -35,36 +33,19 @@ export class AuthService {
       throw new BadRequestException('Password is incorrect');
     }
 
-    if (!findRole) {
-      throw new BadRequestException('Role not found');
-    }
-
-    const accessToken: string = await this.getToken(
-      findUser.id,
-      findRole.name,
-    );
+    const accessToken: string = await this.getToken(findUser.id, findUser.role);
 
     return new ResponseDto(true, 'Sucessfully login', { accessToken });
   }
 
   async createUser(userData: RegisterDto) {
-    const [isExist, role] = await this.prisma.$transaction([
-      this.prisma.user.findUnique({
-        where: { phone: userData.phone },
-        select: { id: true },
-      }),
-      this.prisma.role.findUnique({
-        where: { id: userData.roleId },
-        select: { id: true },
-      }),
-    ]);
+    const isExist = await this.prisma.user.findUnique({
+      where: { phone: userData.phone },
+      select: { id: true },
+    });
 
     if (isExist) {
       throw new BadRequestException('User with this phone already exists');
-    }
-
-    if (!role) {
-      throw new BadRequestException('Role not found');
     }
 
     const hashPass = await this.hashing(userData.password);
@@ -74,7 +55,7 @@ export class AuthService {
         phone: userData.phone,
         name: userData.name,
         password: hashPass,
-        roleId: userData.roleId,
+        role: userData.role,
       },
       select: {
         phone: true,
@@ -85,23 +66,18 @@ export class AuthService {
     return new ResponseDto(true, 'User created', user);
   }
 
-  async getToken(userId: string, role: string): Promise<string> {
-    return await this.jwt.signAsync(
-      {
-        sub: userId,
-        role,
-      },
-      {
-        secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN'),
-      },
-    );
-  }
-
   async updateUser(id: string, userDataDto: UpdateUserDto) {
     const findUser = await this.prisma.user.findUnique({
       where: { id },
     });
+
+    const findPhone = await this.prisma.user.findUnique({
+      where: { phone: userDataDto.phone },
+    });
+
+    if (findPhone) {
+      throw new BadRequestException('This phone already exist!!!');
+    }
 
     if (!findUser) {
       throw new BadRequestException('User not found!!!');
@@ -109,7 +85,8 @@ export class AuthService {
 
     const data: any = {
       name: userDataDto.name,
-      roleId: userDataDto.roleId,
+      phone: userDataDto.phone,
+      role: userDataDto.role,
     };
 
     if (userDataDto.password) {
@@ -137,6 +114,19 @@ export class AuthService {
     await this.prisma.user.delete({ where: { id } });
 
     return null;
+  }
+
+  async getToken(userId: string, role: string): Promise<string> {
+    return await this.jwt.signAsync(
+      {
+        sub: userId,
+        role,
+      },
+      {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN'),
+      },
+    );
   }
 
   async hashing(pass: string): Promise<string> {
