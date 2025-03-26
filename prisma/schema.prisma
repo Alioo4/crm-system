@@ -112,9 +112,9 @@ model History {
   status            Status
   orderId           String    @db.Uuid
 
-  total      String? @db.VarChar(128)
-  prePayment String? @map("pre_payment") @db.VarChar(128)
-  dueAmount  String? @map("due_amount") @db.VarChar(128)
+  total      Int? 
+  prePayment Int? @map("pre_payment") 
+  dueAmount  Int? @map("due_amount")
 
   regionId  String @map("region_id") @db.Uuid
   region    Region @relation(fields: [regionId], references: [id], onDelete: Cascade)

@@ -21,7 +21,7 @@ export class RegionsService {
     const region = await this.prisma.region.create({
       data: { name: createRegionDto.name },
     });
-    return new ResponseDto(true, 'Sucessfully created', region);
+    return new ResponseDto(true, 'Successfully created', region);
   }
 
   async findAll(name?: string, page: number = 1, limit: number = 10) {
@@ -56,7 +56,7 @@ export class RegionsService {
       );
     }
 
-    return new ResponseDto(true, 'Sucessfully found!!!', isExist);
+    return new ResponseDto(true, 'Successfully found!!!', isExist);
   }
 
   async update(id: string, updateRegionDto: UpdateRegionDto) {
@@ -70,7 +70,7 @@ export class RegionsService {
       );
     }
 
-    const update = await this.prisma.region.update({
+    await this.prisma.region.update({
       where: { id },
       data: {
         name: updateRegionDto.name,
@@ -80,7 +80,7 @@ export class RegionsService {
       },
     });
 
-    return new ResponseDto(true, 'Sucessfullyty updated', null);
+    return new ResponseDto(true, 'Successfullyty updated');
   }
 
   async remove(id: string) {
@@ -95,6 +95,6 @@ export class RegionsService {
     }
 
     await this.prisma.region.delete({ where: { id } });
-    return new ResponseDto(true, 'Sucessfullyty deleted', null);
+    return new ResponseDto(true, 'Sucessfullyty deleted');
   }
 }

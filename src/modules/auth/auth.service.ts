@@ -22,7 +22,7 @@ export class AuthService {
     });
 
     if (!findUser) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException(new ResponseDto(false, 'User not found'));
     }
 
     const isPasswordValid: boolean = await this.checkPass(
@@ -30,7 +30,9 @@ export class AuthService {
       findUser.password,
     );
     if (!isPasswordValid) {
-      throw new BadRequestException('Password is incorrect');
+      throw new BadRequestException(
+        new ResponseDto(false, 'Password is incorrect'),
+      );
     }
 
     const accessToken: string = await this.getToken(findUser.id, findUser.role);
@@ -45,7 +47,9 @@ export class AuthService {
     });
 
     if (isExist) {
-      throw new BadRequestException('User with this phone already exists');
+      throw new BadRequestException(
+        new ResponseDto(false, 'User with this phone already exists'),
+      );
     }
 
     const hashPass = await this.hashing(userData.password);
@@ -76,11 +80,15 @@ export class AuthService {
     });
 
     if (findPhone) {
-      throw new BadRequestException('This phone already exist!!!');
+      throw new BadRequestException(
+        new ResponseDto(false, 'This phone already exist!!!'),
+      );
     }
 
     if (!findUser) {
-      throw new BadRequestException('User not found!!!');
+      throw new BadRequestException(
+        new ResponseDto(false, 'User not found!!!'),
+      );
     }
 
     const data: any = {
@@ -108,7 +116,9 @@ export class AuthService {
     });
 
     if (!findUser) {
-      throw new BadRequestException('User not found!!!');
+      throw new BadRequestException(
+        new ResponseDto(false, 'User not found!!!'),
+      );
     }
 
     await this.prisma.user.delete({ where: { id } });

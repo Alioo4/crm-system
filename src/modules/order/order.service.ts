@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -53,7 +53,7 @@ export class OrderService {
     });
 
     if (!order) {
-      throw new NotFoundException(new ResponseDto(false, 'Order not found'));
+      throw new BadRequestException(new ResponseDto(false, 'Order not found'));
     }
 
     return new ResponseDto(true, 'Order found', order);
@@ -65,25 +65,26 @@ export class OrderService {
     role: string,
   ): Promise<IResponse> {
     const { comment, endDateJob, status } = updateOrderDto;
-  
+
     const findOrder = await this.prisma.order.findUnique({ where: { id } });
-  
+
     if (!findOrder) {
-      throw new NotFoundException(new ResponseDto(false, 'Order not found'));
+      throw new BadRequestException(new ResponseDto(false, 'Order not found'));
     }
-  
+
     const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
-  
-    const updateData = isAdminOrManager ? updateOrderDto : { comment, endDateJob, status };
-  
-    const order = await this.prisma.order.update({
+
+    const updateData = isAdminOrManager
+      ? updateOrderDto
+      : { comment, endDateJob, status };
+
+    await this.prisma.order.update({
       where: { id },
       data: updateData,
     });
-  
-    return new ResponseDto(true, 'Order updated successfully', order);
+
+    return new ResponseDto(true, 'Order updated successfully');
   }
-  
 
   async remove(id: string): Promise<IResponse> {
     const findOrder = await this.prisma.order.findUnique({
@@ -91,7 +92,7 @@ export class OrderService {
     });
 
     if (!findOrder) {
-      throw new NotFoundException(new ResponseDto(false, 'Order not found'));
+      throw new BadRequestException(new ResponseDto(false, 'Order not found'));
     }
 
     await this.prisma.order.delete({

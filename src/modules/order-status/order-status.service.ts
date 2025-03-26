@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateOrderStatusDto } from './dto/create-order-status.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,7 +19,9 @@ export class OrderStatusService {
     ]);
 
     if (isExist) {
-      return new ResponseDto(false, 'Status already exists', null);
+      throw new BadRequestException(
+        new ResponseDto(false, 'Status already exists'),
+      );
     }
 
     const colorInt = statusColor ? Number(statusColor.color) + 1 : 1;
@@ -52,10 +54,12 @@ export class OrderStatusService {
     });
 
     if (!findStatus) {
-      return new ResponseDto(false, 'Status not found!!!', null);
+      throw new BadRequestException(
+        new ResponseDto(false, 'Status not found!!!'),
+      );
     }
 
-    return new ResponseDto(true, 'Status sucessfully found!', findStatus);
+    return new ResponseDto(true, 'Status successfully found!', findStatus);
   }
 
   async update(
@@ -65,32 +69,29 @@ export class OrderStatusService {
     const status = await this.prisma.orderStatus.count({ where: { id } });
 
     if (status === 0) {
-      return new ResponseDto(false, 'Status not found!!!', null);
+      throw new BadRequestException(
+        new ResponseDto(false, 'Status not found!!!'),
+      );
     }
 
-    const updateData = await this.prisma.orderStatus.update({
+    await this.prisma.orderStatus.update({
       where: { id },
       data: { name: updateOrderStatusDto.name },
-      select: {
-        id: true,
-        name: true,
-        color: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     });
 
-    return new ResponseDto(true, 'Sucessfully updated status!', updateData);
+    return new ResponseDto(true, 'Successfully updated status!!!');
   }
 
   async remove(id: string): Promise<IResponse> {
     const status = await this.prisma.orderStatus.count({ where: { id } });
 
     if (status === 0) {
-      return new ResponseDto(false, 'Status not found!!!', null);
+      throw new BadRequestException(
+        new ResponseDto(false, 'Status not found!!!'),
+      );
     }
 
     await this.prisma.orderStatus.delete({ where: { id } });
-    return new ResponseDto(true, 'Sucessfully deleted status!', null);
+    return new ResponseDto(true, 'Successfully deleted status!!!');
   }
 }

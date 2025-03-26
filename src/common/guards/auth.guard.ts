@@ -63,8 +63,6 @@ export class JwtAuthGuard implements CanActivate {
       },
     });
 
-    console.log(permission);
-
     if (!permission) {
       throw new ForbiddenException('Permission denied');
     }
