@@ -7,10 +7,15 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { IResponse, ResponseDto } from 'src/common/types';
+import { HistoryService } from '../history/history.service';
+import { Status } from '@prisma/client';
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly history: HistoryService,
+  ) {}
   async create(createOrderDto: CreateOrderDto): Promise<IResponse> {
     const { regionId, socialId, orderStatusId, ...rest } = createOrderDto;
 
@@ -169,13 +174,33 @@ export class OrderService {
   ): Promise<IResponse> {
     const { comment, endDateJob, status } = updateOrderDto;
 
-    const findOrder = await this.prisma.order.findUnique({ where: { id } });
+    const findOrder = await this.prisma.order.findUnique({ where: { id } },);
 
     if (!findOrder) {
       throw new BadRequestException(new ResponseDto(false, 'Order not found'));
     }
 
     const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
+
+    const history: any = {
+        name: findOrder.name,
+        phone: findOrder.phone,
+        comment: findOrder.comment,
+        endDateJob: findOrder.comment,
+        workerArrivalDate: findOrder.workerArrivalDate,
+        orderId: findOrder.id,
+        total: findOrder.total,
+        prePayment: findOrder.prePayment,
+        dueAmount: findOrder.dueAmount,
+        regionId: findOrder.regionId,
+        longitude: findOrder.longitude,
+        latitude: findOrder.latitude,
+        socialId: findOrder.socialId,
+    }
+
+    if (status === Status.ZAVOD || status === Status.USTANOVCHIK || status === Status.DONE){
+      await this.history.create(history);
+    }
 
     const updateData = isAdminOrManager
       ? updateOrderDto
