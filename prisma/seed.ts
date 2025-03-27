@@ -67,7 +67,7 @@ async function main() {
       create: {
         path: 'room-meansurement',
         get: true,
-        post: false,
+        post: true,
         patch: true,
         delete: false,
       },
@@ -87,7 +87,7 @@ async function main() {
       data: {
         phone: '998332218888',
         role: Role.ADMIN,
-        password: '8888',
+        password: '$2b$12$yD1xwXePX/KB5nlc5m1HM.mtb1uuSzVG2n1mefpdmHvw3VgiZtYIa',
         name: 'Quvonchbek'
       }
     })
