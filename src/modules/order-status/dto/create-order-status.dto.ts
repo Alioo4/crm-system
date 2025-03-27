@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateOrderStatusDto {
   @ApiProperty({
@@ -9,4 +9,12 @@ export class CreateOrderStatusDto {
   @IsString({ message: 'Name must be a string' })
   @IsNotEmpty()
   name!: string;
+
+  @ApiProperty({
+    example: 1,
+    description: 'The color of the order status',
+  })
+  @IsInt()
+  @IsOptional()
+  color?: number;
 }

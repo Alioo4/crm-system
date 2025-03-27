@@ -8,6 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Get,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -92,6 +93,22 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   createUser(@Body() payload: RegisterDto) {
     return this.authService.createUser(payload);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Retrieve all users' })
+  @ApiResponse({ status: 200, description: 'Returns a list of all users.' })
+  findAll() {
+    return this.authService.findAll();
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Retrieve a user by ID' })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Returns the user details.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
+  findOne(@Param('id') id: string) {
+    return this.authService.findOne(id);
   }
 
   @Patch('update-user')

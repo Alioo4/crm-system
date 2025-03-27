@@ -36,13 +36,7 @@ export class RegionsService {
         name: true,
       },
     });
-    return new ResponseDto(true, 'Regions fetched successfully', {
-      data: regions,
-      total: regions.length,
-      page,
-      limit,
-      totalPages: Math.ceil(regions.length / limit),
-    });
+    return new ResponseDto(true, 'Regions fetched successfully', regions);
   }
 
   async findOne(id: string) {
@@ -91,6 +85,19 @@ export class RegionsService {
     if (isExist === 0) {
       throw new BadRequestException(
         new ResponseDto(false, 'This region not found!!!'),
+      );
+    }
+
+    const relatedOrders = await this.prisma.order.count({
+      where: { regionId: id },
+    });
+
+    if (relatedOrders > 0) {
+      throw new BadRequestException(
+        new ResponseDto(
+          false,
+          'Cannot delete region because it is linked to existing orders.',
+        ),
       );
     }
 

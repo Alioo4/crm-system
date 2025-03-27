@@ -54,8 +54,7 @@ export class OrderController {
   @ApiQuery({ name: 'region', required: false, type: String, description: 'Search by region name' })
   @ApiQuery({ name: 'social', required: false, type: String, description: 'Search by social name' })
   @ApiQuery({ name: 'orderStatus', required: false, type: String, description: 'Search by order status' })
-  @ApiQuery({ name: 'name', required: false, type: String, description: 'Search by client name' })
-  @ApiQuery({ name: 'phone', required: false, type: String, description: 'Search by phone number' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Search by name, phone, regionName and socialName' })
   @ApiQuery({ name: 'status', required: false, type: String, description: 'Search by status' })
   @ApiQuery({ name: 'startDate', required: false, type: String, description: 'Filter by start date (createdAt)' })
   @ApiQuery({ name: 'endDate', required: false, type: String, description: 'Filter by end date (createdAt)' })
@@ -64,11 +63,10 @@ export class OrderController {
   findAll(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('search') search?: string,
     @Query('region') region?: string,
     @Query('social') social?: string,
     @Query('orderStatus') orderStatus?: string,
-    @Query('name') name?: string,
-    @Query('phone') phone?: string,
     @Query('status') status?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -81,13 +79,12 @@ export class OrderController {
       region,
       social,
       orderStatus,
-      name,
-      phone,
       status,
       startDate,
       endDate,
       endDateJob,
       workerArrivalDate,
+      search,
     });
   }
 

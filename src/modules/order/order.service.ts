@@ -19,13 +19,11 @@ export class OrderService {
   async create(createOrderDto: CreateOrderDto): Promise<IResponse> {
     const { regionId, socialId, orderStatusId, ...rest } = createOrderDto;
 
-    const [region, social, orderStatus] = await this.prisma.$transaction(
-      [
-        this.prisma.region.findUnique({ where: { id: regionId } }),
-        this.prisma.social.findUnique({ where: { id: socialId } }),
-        this.prisma.orderStatus.findUnique({ where: { id: orderStatusId } }),
-      ],
-    );
+    const [region, social, orderStatus] = await this.prisma.$transaction([
+      this.prisma.region.findUnique({ where: { id: regionId } }),
+      this.prisma.social.findUnique({ where: { id: socialId } }),
+      this.prisma.orderStatus.findUnique({ where: { id: orderStatusId } }),
+    ]);
 
     if (!region)
       throw new NotFoundException(new ResponseDto(false, 'Region not found'));
@@ -43,7 +41,7 @@ export class OrderService {
         orderStatusId,
         ...rest,
       },
-    })
+    });
 
     return new ResponseDto(true, 'Order created successfully', order);
   }
@@ -54,13 +52,12 @@ export class OrderService {
     region?: string;
     social?: string;
     orderStatus?: string;
-    name?: string;
-    phone?: string;
     status?: string;
     startDate?: string;
     endDate?: string;
     endDateJob?: string;
     workerArrivalDate?: string;
+    search?: string;
   }) {
     const {
       page = 1,
@@ -68,13 +65,12 @@ export class OrderService {
       region,
       social,
       orderStatus,
-      name,
-      phone,
       status,
       startDate,
       endDate,
       endDateJob,
       workerArrivalDate,
+      search,
     } = filters;
 
     const skip = (page - 1) * limit;
@@ -82,52 +78,49 @@ export class OrderService {
 
     const where: any = {};
 
-    if (region) {
-      where.region = {
-        name: { contains: region, mode: 'insensitive' },
-      };
-    }
-
-    if (social) {
-      where.social = {
-        name: { contains: social, mode: 'insensitive' },
-      };
-    }
-
-    if (orderStatus) {
-      where.orderStatus = {
-        name: { contains: orderStatus, mode: 'insensitive' },
-      };
-    }
-
-    if (name) {
-      where.name = { contains: name, mode: 'insensitive' };
-    }
-
-    if (phone) {
-      where.phone = { contains: phone };
-    }
-
-    if (status) {
-      where.status = status;
-    }
-
-    if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) {
-        where.createdAt.gte = new Date(startDate);
+    if (search) {
+      where.OR = [
+        { phone: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { region: { name: { contains: search, mode: 'insensitive' } } },
+        { social: { name: { contains: search, mode: 'insensitive' } } },
+      ];
+    } else {
+      if (region) {
+        where.region = { name: { contains: region, mode: 'insensitive' } };
       }
-      if (endDate) {
-        where.createdAt.lte = new Date(endDate);
+
+      if (social) {
+        where.social = { name: { contains: social, mode: 'insensitive' } };
       }
-    }
 
-    if (endDateJob) {
-      where.endDateJob = { gte: new Date(endDateJob) };
-    }
+      if (orderStatus) {
+        where.orderStatus = {
+          name: { contains: orderStatus, mode: 'insensitive' },
+        };
+      }
 
-    if (workerArrivalDate) {
-      where.workerArrivalDate = { gte: new Date(workerArrivalDate) };
+      if (status) {
+        where.status = status;
+      }
+
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) {
+          where.createdAt.gte = new Date(startDate);
+        }
+        if (endDate) {
+          where.createdAt.lte = new Date(endDate);
+        }
+      }
+
+      if (endDateJob) {
+        where.endDateJob = { gte: new Date(endDateJob) };
+      }
+
+      if (workerArrivalDate) {
+        where.workerArrivalDate = { gte: new Date(workerArrivalDate) };
+      }
     }
 
     const orders = await this.prisma.order.findMany({
@@ -152,7 +145,7 @@ export class OrderService {
       totalPages: Math.ceil(total / limit),
     };
 
-    return new ResponseDto(true, 'Successfully find!!!', orders, pagination);
+    return new ResponseDto(true, 'Successfully found!!!', orders, pagination);
   }
 
   async findOne(id: string): Promise<IResponse> {
@@ -172,43 +165,41 @@ export class OrderService {
     updateOrderDto: UpdateOrderDto,
     role: string,
   ): Promise<IResponse> {
-    const { comment, endDateJob, status } = updateOrderDto;
+    const { status } = updateOrderDto;
 
-    const findOrder = await this.prisma.order.findUnique({ where: { id } },);
+    const findOrder = await this.prisma.order.findUnique({ where: { id } });
 
     if (!findOrder) {
       throw new BadRequestException(new ResponseDto(false, 'Order not found'));
     }
 
-    const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
-
     const history: any = {
-        name: findOrder.name,
-        phone: findOrder.phone,
-        comment: findOrder.comment,
-        endDateJob: findOrder.comment,
-        workerArrivalDate: findOrder.workerArrivalDate,
-        orderId: findOrder.id,
-        total: findOrder.total,
-        prePayment: findOrder.prePayment,
-        dueAmount: findOrder.dueAmount,
-        regionId: findOrder.regionId,
-        longitude: findOrder.longitude,
-        latitude: findOrder.latitude,
-        socialId: findOrder.socialId,
-    }
+      name: findOrder.name,
+      phone: findOrder.phone,
+      comment: findOrder.comment,
+      endDateJob: findOrder.comment,
+      workerArrivalDate: findOrder.workerArrivalDate,
+      orderId: findOrder.id,
+      total: findOrder.total,
+      prePayment: findOrder.prePayment,
+      dueAmount: findOrder.dueAmount,
+      regionId: findOrder.regionId,
+      longitude: findOrder.longitude,
+      latitude: findOrder.latitude,
+      socialId: findOrder.socialId,
+    };
 
-    if (status === Status.ZAVOD || status === Status.USTANOVCHIK || status === Status.DONE){
+    if (
+      status === Status.ZAVOD ||
+      status === Status.USTANOVCHIK ||
+      status === Status.DONE
+    ) {
       await this.history.create(history);
     }
 
-    const updateData = isAdminOrManager
-      ? updateOrderDto
-      : { comment, endDateJob, status };
-
     await this.prisma.order.update({
       where: { id },
-      data: updateData,
+      data: updateOrderDto,
     });
 
     return new ResponseDto(true, 'Order updated successfully');
@@ -221,6 +212,19 @@ export class OrderService {
 
     if (!findOrder) {
       throw new BadRequestException(new ResponseDto(false, 'Order not found'));
+    }
+
+    const relatedOrders = await this.prisma.roomMeasurement.count({
+      where: { orderId: id },
+    });
+
+    if (relatedOrders > 0) {
+      throw new BadRequestException(
+        new ResponseDto(
+          false,
+          'Cannot delete order status because it is linked to existing orders.',
+        ),
+      );
     }
 
     await this.prisma.order.delete({

@@ -37,7 +37,10 @@ export class AuthService {
 
     const accessToken: string = await this.getToken(findUser.id, findUser.role);
 
-    return new ResponseDto(true, 'Sucessfully login', { accessToken });
+    return new ResponseDto(true, 'Sucessfully login', {
+      accessToken,
+      role: findUser.role,
+    });
   }
 
   async createUser(userData: RegisterDto) {
@@ -68,6 +71,25 @@ export class AuthService {
     });
 
     return new ResponseDto(true, 'User created', user);
+  }
+
+  async findAll() {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        role: true,
+      },
+    });
+
+    return new ResponseDto(true, 'Successfully find!!!', users);
+  }
+
+  async findOne(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+
+    return new ResponseDto(true, 'Successfully find!!!', user);
   }
 
   async updateUser(id: string, userDataDto: UpdateUserDto) {

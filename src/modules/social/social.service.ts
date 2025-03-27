@@ -38,13 +38,7 @@ export class SocialService {
       this.prisma.social.count({ where }),
     ]);
 
-    return new ResponseDto(true, 'Social fetched successfully', {
-      data,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    });
+    return new ResponseDto(true, 'Social fetched successfully', data);
   }
 
   async findOne(id: string) {
@@ -93,6 +87,19 @@ export class SocialService {
     if (isExist === 0) {
       throw new BadRequestException(
         new ResponseDto(false, 'This social not found!!!'),
+      );
+    }
+
+    const relatedOrders = await this.prisma.order.count({
+      where: { socialId: id },
+    });
+
+    if (relatedOrders > 0) {
+      throw new BadRequestException(
+        new ResponseDto(
+          false,
+          'Cannot delete social because it is linked to existing orders.',
+        ),
       );
     }
 

@@ -28,6 +28,7 @@ export class RegisterDto {
   @ApiProperty({
     example: 'John Doe',
     description: 'Enter your name, max length 64',
+    required: false,
   })
   @MaxLength(64)
   @IsString()

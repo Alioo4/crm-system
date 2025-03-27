@@ -8,15 +8,9 @@ import { IResponse, ResponseDto } from 'src/common/types';
 export class OrderStatusService {
   constructor(private readonly prisma: PrismaService) {}
   async create(createOrderStatusDto: CreateOrderStatusDto): Promise<IResponse> {
-    const [isExist, statusColor] = await this.prisma.$transaction([
-      this.prisma.orderStatus.findUnique({
-        where: { name: createOrderStatusDto.name },
-      }),
-      this.prisma.orderStatus.findFirst({
-        orderBy: { color: 'desc' },
-        select: { color: true },
-      }),
-    ]);
+    const isExist = await this.prisma.orderStatus.findUnique({
+      where: { name: createOrderStatusDto.name },
+    });
 
     if (isExist) {
       throw new BadRequestException(
@@ -24,10 +18,11 @@ export class OrderStatusService {
       );
     }
 
-    const colorInt = statusColor ? Number(statusColor.color) + 1 : 1;
-
     const status = await this.prisma.orderStatus.create({
-      data: { name: createOrderStatusDto.name, color: colorInt },
+      data: {
+        name: createOrderStatusDto.name,
+        color: createOrderStatusDto.color,
+      },
     });
     return new ResponseDto(true, 'Status created successfully', status);
   }
@@ -88,6 +83,19 @@ export class OrderStatusService {
     if (status === 0) {
       throw new BadRequestException(
         new ResponseDto(false, 'Status not found!!!'),
+      );
+    }
+
+    const relatedOrders = await this.prisma.order.count({
+      where: { orderStatusId: id },
+    });
+
+    if (relatedOrders > 0) {
+      throw new BadRequestException(
+        new ResponseDto(
+          false,
+          'Cannot delete order status because it is linked to existing orders',
+        ),
       );
     }
 
