@@ -49,29 +49,17 @@ export class RegionsController {
   @ApiQuery({
     name: 'name',
     required: false,
-    example: 'Toshkent',
+    example: 'Yunusobod',
     description: 'Region nomi bo‘yicha qidirish',
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    example: 1,
-    description: 'Nechanchi sahifa (default: 1)',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    example: 10,
-    description: 'Nechta element olish (default: 10)',
   })
   @ApiResponse({
     status: 200,
     description: 'A list of regions',
     type: [Region],
   })
-  findAll(@Query() query: { name?: string; page?: string; limit?: string }) {
-    const { name, page = '1', limit = '10' } = query;
-    return this.regionsService.findAll(name, Number(page), Number(limit));
+  findAll(@Query() query: { name?: string }) {
+    const { name} = query;
+    return this.regionsService.findAll(name);
   }
 
   @Get(':id')

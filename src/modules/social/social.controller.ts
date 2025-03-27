@@ -45,26 +45,14 @@ export class SocialController {
     description: 'Search by social name',
     example: 'Twitter',
   })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    description: 'Page number (default: 1)',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Number of records per page (default: 10)',
-    example: 10,
-  })
   @ApiResponse({
     status: 200,
     description: 'A list of social records',
     type: [Social],
   })
-  findAll(@Query() query: { name?: string; page?: string; limit?: string }) {
-    const { name, page = '1', limit = '10' } = query;
-    return this.socialService.findAll(name, Number(page), Number(limit));
+  findAll(@Query() query: { name?: string }) {
+    const { name } = query;
+    return this.socialService.findAll(name);
   }
 
   @Get(':id')

@@ -25,18 +25,13 @@ export class SocialService {
     return new ResponseDto(true, 'Sucessfully created', social);
   }
 
-  async findAll(name?: string, page: number = 1, limit: number = 10) {
+  async findAll(name?: string) {
     const where: any = name
       ? { name: { contains: name, mode: 'insensitive' } }
       : {};
-    const [data, total] = await Promise.all([
-      this.prisma.social.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.social.count({ where }),
-    ]);
+    const data = await this.prisma.social.findMany({
+      where,
+    });
 
     return new ResponseDto(true, 'Social fetched successfully', data);
   }

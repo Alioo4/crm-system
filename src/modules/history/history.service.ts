@@ -30,7 +30,8 @@ export class HistoryService {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search, mode: 'insensitive' } },
-        { comment: { contains: search, mode: 'insensitive' } },
+        { region: { name: { contains: search, mode: 'insensitive' } } },
+        { social: { name: { contains: search, mode: 'insensitive' } } },
       ];
     }
 

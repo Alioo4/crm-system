@@ -24,13 +24,9 @@ export class RegionsService {
     return new ResponseDto(true, 'Successfully created', region);
   }
 
-  async findAll(name?: string, page: number = 1, limit: number = 10) {
-    const skip = (page - 1) * limit;
-
+  async findAll(name?: string) {
     const regions = await this.prisma.region.findMany({
       where: name ? { name: { contains: name, mode: 'insensitive' } } : {},
-      take: limit,
-      skip,
       select: {
         id: true,
         name: true,
