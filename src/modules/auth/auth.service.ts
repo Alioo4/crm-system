@@ -129,7 +129,7 @@ export class AuthService {
       select: { phone: true, name: true },
     });
 
-    return new ResponseDto(true, 'User updated', user);
+    return new ResponseDto(true, 'User updated');
   }
 
   async deleteUser(id: string) {
@@ -145,7 +145,7 @@ export class AuthService {
 
     await this.prisma.user.delete({ where: { id } });
 
-    return null;
+    return new ResponseDto(true, 'User deleted');
   }
 
   async getToken(userId: string, role: string): Promise<string> {

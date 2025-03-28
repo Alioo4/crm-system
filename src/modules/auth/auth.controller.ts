@@ -111,7 +111,7 @@ export class AuthController {
     return this.authService.findOne(id);
   }
 
-  @Patch('update-user')
+  @Patch('update-user/:id')
   @ApiOperation({ summary: 'Update user information' })
   @ApiBody({ type: UpdateUserDto, required: false })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
@@ -126,12 +126,12 @@ export class AuthController {
   })
   updateUser(
     @Param('id', new ParseUUIDPipe()) id: string,
-    userDataDto: UpdateUserDto,
+    @Body() userDataDto: UpdateUserDto, // <-- @Body() qo‘shildi
   ) {
     return this.authService.updateUser(id, userDataDto);
   }
 
-  @Delete('delete-user')
+  @Delete('delete-user/:id')
   @ApiOperation({ summary: 'Delete a user by ID' })
   @ApiParam({
     name: 'id',
