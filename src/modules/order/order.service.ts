@@ -19,28 +19,22 @@ export class OrderService {
   async create(createOrderDto: CreateOrderDto): Promise<IResponse> {
     const { regionId, socialId, orderStatusId, ...rest } = createOrderDto;
 
-    const [region, social, orderStatus] = await this.prisma.$transaction([
-      this.prisma.region.findUnique({ where: { id: regionId } }),
-      this.prisma.social.findUnique({ where: { id: socialId } }),
-      this.prisma.orderStatus.findUnique({ where: { id: orderStatusId } }),
-    ]);
+    const region = regionId ? await this.prisma.region.findUnique({ where: { id: regionId } }) : null;
+    if (regionId && !region) throw new NotFoundException(new ResponseDto(false, 'Region not found'));
 
-    if (!region)
-      throw new NotFoundException(new ResponseDto(false, 'Region not found'));
-    if (!social)
-      throw new NotFoundException(new ResponseDto(false, 'Social not found'));
-    if (!orderStatus)
-      throw new NotFoundException(
-        new ResponseDto(false, 'Order status not found'),
-      );
+    const social = socialId ? await this.prisma.social.findUnique({ where: { id: socialId } }) : null;
+    if (socialId && !social) throw new NotFoundException(new ResponseDto(false, 'Social not found'));
+
+    const orderStatus = orderStatusId ? await this.prisma.orderStatus.findUnique({ where: { id: orderStatusId } }) : null;
+    if (orderStatusId && !orderStatus) throw new NotFoundException(new ResponseDto(false, 'Order status not found'));
 
     const order = await this.prisma.order.create({
-      data: {
-        regionId,
-        socialId,
-        orderStatusId,
-        ...rest,
-      },
+        data: {
+            regionId: region?.id || null,
+            socialId: social?.id || null,
+            orderStatusId: orderStatus?.id || null,
+            ...rest,
+        },
     });
 
     return new ResponseDto(true, 'Order created successfully', order);
@@ -187,6 +181,7 @@ export class OrderService {
       longitude: findOrder.longitude,
       latitude: findOrder.latitude,
       socialId: findOrder.socialId,
+      status: findOrder.status,
     };
 
     if (

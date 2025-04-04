@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsDateString,
   IsEnum,
+  IsNotEmpty,
 } from 'class-validator';
 
 export enum Status {
@@ -19,52 +20,52 @@ export enum Status {
 
 export class CreateOrderDto {
   @ApiPropertyOptional({ description: 'Client name', example: 'Ravshanbek' })
-  @IsOptional()
   @IsString()
+  @IsOptional()
   name?: string;
 
   @ApiPropertyOptional({ description: 'Phone number', example: '998901234567' })
-  @IsOptional()
   @IsString()
-  phone?: string;
+  @IsNotEmpty() 
+  phone: string;
 
   @ApiPropertyOptional({
     description: 'Comment',
     example: 'Iltimos, ertalab 9 da keling',
   })
-  @IsOptional()
   @IsString()
+  @IsOptional()
   comment?: string;
 
   @ApiPropertyOptional({
     description: 'Ending job date',
     example: '2025-04-10T08:00:00.000Z',
   })
-  @IsOptional()
   @IsDateString()
+  @IsOptional()
   endDateJob?: Date;
 
   @ApiPropertyOptional({
     description: 'Workers coming date',
     example: '2025-04-05T08:00:00.000Z',
   })
-  @IsOptional()
   @IsDateString()
+  @IsOptional()
   workerArrivalDate?: Date;
 
   @ApiPropertyOptional({ description: 'Total price', example: 1200000 })
-  @IsOptional()
   @IsNumber()
+  @IsOptional()
   total?: number;
 
   @ApiPropertyOptional({ description: 'Pre-payment', example: 500000 })
-  @IsOptional()
   @IsNumber()
+  @IsOptional()
   prePayment?: number;
 
   @ApiPropertyOptional({ description: 'Due-amount', example: 700000 })
-  @IsOptional()
   @IsNumber()
+  @IsOptional()
   dueAmount?: number;
 
   @ApiProperty({
@@ -75,13 +76,13 @@ export class CreateOrderDto {
   regionId!: string;
 
   @ApiPropertyOptional({ description: 'Longitude', example: 69.2401 })
-  @IsOptional()
   @IsNumber()
+  @IsOptional()
   longitude?: number;
 
   @ApiPropertyOptional({ description: 'Latitude', example: 41.3111 })
-  @IsOptional()
   @IsNumber()
+  @IsOptional()
   latitude?: number;
 
   @ApiProperty({
@@ -89,14 +90,16 @@ export class CreateOrderDto {
     example: '550e8400-e29b-41d4-a716-446655440001',
   })
   @IsUUID()
-  socialId!: string;
+  @IsOptional()
+  socialId?: string;
 
   @ApiProperty({
     description: 'Order Status',
     example: '550e8400-e29b-41d4-a716-446655440002',
   })
   @IsUUID()
-  orderStatusId!: string;
+  @IsOptional()
+  orderStatusId?: string;
 
   @ApiProperty({
     description: 'Status',
@@ -104,7 +107,8 @@ export class CreateOrderDto {
     enum: Status,
   })
   @IsEnum(Status)
-  status!: Status;
+  @IsOptional()
+  status?: Status;
 }
 
 export class ResponseOrderPosDto<T = any> {

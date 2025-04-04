@@ -29,6 +29,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { User } from 'src/common/decorators/get-user.decarator';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @ApiBearerAuth()
 @ApiTags('Order')
@@ -38,6 +39,7 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
+  @Public()
   @ApiOperation({ summary: 'Create a new order' })
   @ApiCreatedResponse({
     description: 'Order successfully created',

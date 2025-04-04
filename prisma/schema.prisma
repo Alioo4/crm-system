@@ -35,16 +35,16 @@ model Order {
   prePayment Int? @map("pre_payment") 
   dueAmount  Int? @map("due_amount") 
 
-  regionId  String @map("region_id") @db.Uuid
-  region    Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  regionId  String? @map("region_id") @db.Uuid
+  region    Region? @relation(fields: [regionId], references: [id], onDelete: Cascade)
   longitude Float?
   latitude  Float?
 
-  socialId String @map("social_id") @db.Uuid
-  social   Social @relation(fields: [socialId], references: [id], onDelete: Cascade)
+  socialId String? @map("social_id") @db.Uuid
+  social   Social? @relation(fields: [socialId], references: [id], onDelete: Cascade)
 
-  orderStatusId String      @map("order_status_id") @db.Uuid
-  orderStatus   OrderStatus @relation(fields: [orderStatusId], references: [id], onDelete: Cascade)
+  orderStatusId String?      @map("order_status_id") @db.Uuid
+  orderStatus   OrderStatus? @relation(fields: [orderStatusId], references: [id], onDelete: Cascade)
 
   roomMeasurement RoomMeasurement[]
 }
@@ -110,19 +110,19 @@ model History {
   endDateJob        DateTime? @map("end_date_job")
   workerArrivalDate DateTime? @map("worker_arrival_date")
   status            Status
-  orderId           String    @db.Uuid
+  orderId           String?    @db.Uuid
 
   total      Int? 
   prePayment Int? @map("pre_payment") 
   dueAmount  Int? @map("due_amount")
 
-  regionId  String @map("region_id") @db.Uuid
-  region    Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  regionId  String? @map("region_id") @db.Uuid
+  region    Region? @relation(fields: [regionId], references: [id], onDelete: Cascade)
   longitude Float?
   latitude  Float?
 
-  socialId String @map("social_id") @db.Uuid
-  social   Social @relation(fields: [socialId], references: [id], onDelete: Cascade)
+  socialId String? @map("social_id") @db.Uuid
+  social   Social? @relation(fields: [socialId], references: [id], onDelete: Cascade)
 }
 
 model PermissionAll {
