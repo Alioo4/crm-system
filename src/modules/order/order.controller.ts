@@ -53,7 +53,7 @@ export class OrderController {
   @ApiOperation({ summary: 'Get all orders with filters and pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
-  @ApiQuery({ name: 'orderStatus', required: false, type: String, description: 'Search by order status' })
+  @ApiQuery({ name: 'orderStatusId', required: false, type: String, description: 'Search by order status' })
   @ApiQuery({ name: 'socialId', required: false, type: String, description: 'Search by socialId' })
   @ApiQuery({ name: 'regionId', required: false, type: String, description: 'Search by regionId' })
   @ApiQuery({ name: 'search', required: false, type: String, description: 'Search by name, phone, regionName and socialName' })
