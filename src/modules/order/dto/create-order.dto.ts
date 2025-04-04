@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsOptional,
   IsString,
@@ -42,6 +43,7 @@ export class CreateOrderDto {
     example: '2025-04-10T08:00:00.000Z',
   })
   @IsDateString()
+  @Transform(({ value }) => (value?.trim() === '' ? undefined : value))
   @IsOptional()
   endDateJob?: Date;
 
@@ -50,6 +52,7 @@ export class CreateOrderDto {
     example: '2025-04-05T08:00:00.000Z',
   })
   @IsDateString()
+  @Transform(({ value }) => (value?.trim() === '' ? undefined : value))
   @IsOptional()
   workerArrivalDate?: Date;
 
@@ -72,7 +75,6 @@ export class CreateOrderDto {
     description: 'Region Id',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @IsUUID()
   regionId!: string;
 
   @ApiPropertyOptional({ description: 'Longitude', example: 69.2401 })
@@ -89,7 +91,6 @@ export class CreateOrderDto {
     description: 'Social Id',
     example: '550e8400-e29b-41d4-a716-446655440001',
   })
-  @IsUUID()
   @IsOptional()
   socialId?: string;
 
@@ -97,7 +98,6 @@ export class CreateOrderDto {
     description: 'Order Status',
     example: '550e8400-e29b-41d4-a716-446655440002',
   })
-  @IsUUID()
   @IsOptional()
   orderStatusId?: string;
 
@@ -107,6 +107,7 @@ export class CreateOrderDto {
     enum: Status,
   })
   @IsEnum(Status)
+  @Transform(({ value }) => (value?.trim() === '' ? undefined : value))
   @IsOptional()
   status?: Status;
 }

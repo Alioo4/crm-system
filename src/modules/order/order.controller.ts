@@ -54,6 +54,8 @@ export class OrderController {
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
   @ApiQuery({ name: 'orderStatus', required: false, type: String, description: 'Search by order status' })
+  @ApiQuery({ name: 'socialId', required: false, type: String, description: 'Search by socialId' })
+  @ApiQuery({ name: 'regionId', required: false, type: String, description: 'Search by regionId' })
   @ApiQuery({ name: 'search', required: false, type: String, description: 'Search by name, phone, regionName and socialName' })
   @ApiQuery({ name: 'status', required: false, type: String, description: 'Search by status' })
   @ApiQuery({ name: 'startDate', required: false, type: String, description: 'Filter by start date (createdAt)' })
@@ -64,7 +66,9 @@ export class OrderController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
-    @Query('orderStatus') orderStatus?: string,
+    @Query('orderStatusId') orderStatusId?: string,
+    @Query('socialId') socialId?: string,
+    @Query('regionId') regionId?: string,
     @Query('status') status?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -74,7 +78,9 @@ export class OrderController {
     return this.orderService.findAll({
       page,
       limit,
-      orderStatus,
+      orderStatusId,
+      socialId,
+      regionId,
       status,
       startDate,
       endDate,

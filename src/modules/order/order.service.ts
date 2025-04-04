@@ -17,7 +17,15 @@ export class OrderService {
     private readonly history: HistoryService,
   ) {}
   async create(createOrderDto: CreateOrderDto): Promise<IResponse> {
-    const { regionId, socialId, orderStatusId, ...rest } = createOrderDto;
+    const {
+      regionId,
+      socialId,
+      orderStatusId,
+      endDateJob,
+      workerArrivalDate,
+      status,
+      ...rest
+    } = createOrderDto;
 
     const region = regionId
       ? await this.prisma.region.findUnique({ where: { id: regionId } })
@@ -41,11 +49,22 @@ export class OrderService {
         new ResponseDto(false, 'Order status not found'),
       );
 
+    const safeWorkerArrivalDate =
+      typeof workerArrivalDate === 'string' 
+        ? new Date(workerArrivalDate)
+        : undefined;
+
+    const safeEndDateJob =
+      typeof endDateJob === 'string' 
+        ? new Date(endDateJob)
+        : undefined;
+
     const order = await this.prisma.order.create({
       data: {
         regionId: region?.id || null,
         socialId: social?.id || null,
         orderStatusId: orderStatus?.id || null,
+        status: status?.trim() ? status : undefined,
         ...rest,
       },
     });
@@ -56,9 +75,9 @@ export class OrderService {
   async findAll(filters: {
     page?: number;
     limit?: number;
-    region?: string;
-    social?: string;
-    orderStatus?: string;
+    orderStatusId?: string;
+    socialId?: string;
+    regionId?: string;
     status?: string;
     startDate?: string;
     endDate?: string;
@@ -69,7 +88,9 @@ export class OrderService {
     const {
       page = 1,
       limit = 10,
-      orderStatus,
+      orderStatusId,
+      regionId,
+      socialId,
       status,
       startDate,
       endDate,
@@ -77,31 +98,32 @@ export class OrderService {
       workerArrivalDate,
       search,
     } = filters;
-  
+
     const take = Number.isNaN(Number(limit)) ? 10 : Number(limit);
     const skip = Number.isNaN(Number(page)) ? 0 : (Number(page) - 1) * take;
-  
+
     const where: any = {};
-  
+
     if (search) {
       where.OR = [
         { phone: { contains: search, mode: 'insensitive' } },
         { name: { contains: search, mode: 'insensitive' } },
-        { region: { name: { contains: search, mode: 'insensitive' } } },
-        { social: { name: { contains: search, mode: 'insensitive' } } },
       ];
     }
-  
-    if (orderStatus) {
-      where.orderStatus = {
-        name: { contains: orderStatus, mode: 'insensitive' },
-      };
+
+    if (orderStatusId) {
+      where.orderStatusId = orderStatusId;
     }
-  
+    if (regionId) {
+      where.regionId = regionId;
+    }
+    if (socialId) {
+      where.socialId = socialId;
+    }
     if (status) {
       where.status = status;
     }
-  
+
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) {
@@ -113,17 +135,17 @@ export class OrderService {
         if (!isNaN(date.getTime())) where.createdAt.lte = date;
       }
     }
-  
+
     if (endDateJob) {
       const date = new Date(endDateJob);
       if (!isNaN(date.getTime())) where.endDateJob = { gte: date };
     }
-  
+
     if (workerArrivalDate) {
       const date = new Date(workerArrivalDate);
       if (!isNaN(date.getTime())) where.workerArrivalDate = { gte: date };
     }
-  
+
     const [orders, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
         where,
@@ -139,14 +161,14 @@ export class OrderService {
       }),
       this.prisma.order.count({ where }),
     ]);
-  
+
     return new ResponseDto(true, 'Successfully found!', orders, {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     });
-  }  
+  }
 
   async findOne(id: string): Promise<IResponse> {
     const order = await this.prisma.order.findUnique({
