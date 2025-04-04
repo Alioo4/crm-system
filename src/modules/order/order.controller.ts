@@ -53,8 +53,6 @@ export class OrderController {
   @ApiOperation({ summary: 'Get all orders with filters and pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
-  @ApiQuery({ name: 'region', required: false, type: String, description: 'Search by region name' })
-  @ApiQuery({ name: 'social', required: false, type: String, description: 'Search by social name' })
   @ApiQuery({ name: 'orderStatus', required: false, type: String, description: 'Search by order status' })
   @ApiQuery({ name: 'search', required: false, type: String, description: 'Search by name, phone, regionName and socialName' })
   @ApiQuery({ name: 'status', required: false, type: String, description: 'Search by status' })
@@ -66,8 +64,6 @@ export class OrderController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
-    @Query('region') region?: string,
-    @Query('social') social?: string,
     @Query('orderStatus') orderStatus?: string,
     @Query('status') status?: string,
     @Query('startDate') startDate?: string,
@@ -78,8 +74,6 @@ export class OrderController {
     return this.orderService.findAll({
       page,
       limit,
-      region,
-      social,
       orderStatus,
       status,
       startDate,

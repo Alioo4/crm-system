@@ -19,22 +19,35 @@ export class OrderService {
   async create(createOrderDto: CreateOrderDto): Promise<IResponse> {
     const { regionId, socialId, orderStatusId, ...rest } = createOrderDto;
 
-    const region = regionId ? await this.prisma.region.findUnique({ where: { id: regionId } }) : null;
-    if (regionId && !region) throw new NotFoundException(new ResponseDto(false, 'Region not found'));
+    const region = regionId
+      ? await this.prisma.region.findUnique({ where: { id: regionId } })
+      : null;
+    if (regionId && !region)
+      throw new NotFoundException(new ResponseDto(false, 'Region not found'));
 
-    const social = socialId ? await this.prisma.social.findUnique({ where: { id: socialId } }) : null;
-    if (socialId && !social) throw new NotFoundException(new ResponseDto(false, 'Social not found'));
+    const social = socialId
+      ? await this.prisma.social.findUnique({ where: { id: socialId } })
+      : null;
+    if (socialId && !social)
+      throw new NotFoundException(new ResponseDto(false, 'Social not found'));
 
-    const orderStatus = orderStatusId ? await this.prisma.orderStatus.findUnique({ where: { id: orderStatusId } }) : null;
-    if (orderStatusId && !orderStatus) throw new NotFoundException(new ResponseDto(false, 'Order status not found'));
+    const orderStatus = orderStatusId
+      ? await this.prisma.orderStatus.findUnique({
+          where: { id: orderStatusId },
+        })
+      : null;
+    if (orderStatusId && !orderStatus)
+      throw new NotFoundException(
+        new ResponseDto(false, 'Order status not found'),
+      );
 
     const order = await this.prisma.order.create({
-        data: {
-            regionId: region?.id || null,
-            socialId: social?.id || null,
-            orderStatusId: orderStatus?.id || null,
-            ...rest,
-        },
+      data: {
+        regionId: region?.id || null,
+        socialId: social?.id || null,
+        orderStatusId: orderStatus?.id || null,
+        ...rest,
+      },
     });
 
     return new ResponseDto(true, 'Order created successfully', order);
@@ -56,8 +69,6 @@ export class OrderService {
     const {
       page = 1,
       limit = 10,
-      region,
-      social,
       orderStatus,
       status,
       startDate,
@@ -67,8 +78,8 @@ export class OrderService {
       search,
     } = filters;
 
-    const skip = (page - 1) * limit;
-    const take = limit;
+    const skip = Number(page - 1) * Number(limit) || 0;
+    const take = Number(limit) || 10;
 
     const where: any = {};
 
@@ -79,42 +90,33 @@ export class OrderService {
         { region: { name: { contains: search, mode: 'insensitive' } } },
         { social: { name: { contains: search, mode: 'insensitive' } } },
       ];
-    } else {
-      if (region) {
-        where.region = { name: { contains: region, mode: 'insensitive' } };
-      }
+    }
+    if (orderStatus) {
+      where.orderStatus = {
+        name: { contains: orderStatus, mode: 'insensitive' },
+      };
+    }
 
-      if (social) {
-        where.social = { name: { contains: social, mode: 'insensitive' } };
-      }
+    if (status) {
+      where.status = status;
+    }
 
-      if (orderStatus) {
-        where.orderStatus = {
-          name: { contains: orderStatus, mode: 'insensitive' },
-        };
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) {
+        where.createdAt.gte = new Date(startDate);
       }
+      if (endDate) {
+        where.createdAt.lte = new Date(endDate);
+      }
+    }
 
-      if (status) {
-        where.status = status;
-      }
+    if (endDateJob) {
+      where.endDateJob = { gte: new Date(endDateJob) };
+    }
 
-      if (startDate || endDate) {
-        where.createdAt = {};
-        if (startDate) {
-          where.createdAt.gte = new Date(startDate);
-        }
-        if (endDate) {
-          where.createdAt.lte = new Date(endDate);
-        }
-      }
-
-      if (endDateJob) {
-        where.endDateJob = { gte: new Date(endDateJob) };
-      }
-
-      if (workerArrivalDate) {
-        where.workerArrivalDate = { gte: new Date(workerArrivalDate) };
-      }
+    if (workerArrivalDate) {
+      where.workerArrivalDate = { gte: new Date(workerArrivalDate) };
     }
 
     const orders = await this.prisma.order.findMany({
