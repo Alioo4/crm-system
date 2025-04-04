@@ -77,12 +77,12 @@ export class OrderService {
       workerArrivalDate,
       search,
     } = filters;
-
-    const skip = Number(page - 1) * Number(limit) || 0;
-    const take = Number(limit) || 10;
-
+  
+    const take = Number.isNaN(Number(limit)) ? 10 : Number(limit);
+    const skip = Number.isNaN(Number(page)) ? 0 : (Number(page) - 1) * take;
+  
     const where: any = {};
-
+  
     if (search) {
       where.OR = [
         { phone: { contains: search, mode: 'insensitive' } },
@@ -91,58 +91,62 @@ export class OrderService {
         { social: { name: { contains: search, mode: 'insensitive' } } },
       ];
     }
+  
     if (orderStatus) {
       where.orderStatus = {
         name: { contains: orderStatus, mode: 'insensitive' },
       };
     }
-
+  
     if (status) {
       where.status = status;
     }
-
+  
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) {
-        where.createdAt.gte = new Date(startDate);
+        const date = new Date(startDate);
+        if (!isNaN(date.getTime())) where.createdAt.gte = date;
       }
       if (endDate) {
-        where.createdAt.lte = new Date(endDate);
+        const date = new Date(endDate);
+        if (!isNaN(date.getTime())) where.createdAt.lte = date;
       }
     }
-
+  
     if (endDateJob) {
-      where.endDateJob = { gte: new Date(endDateJob) };
+      const date = new Date(endDateJob);
+      if (!isNaN(date.getTime())) where.endDateJob = { gte: date };
     }
-
+  
     if (workerArrivalDate) {
-      where.workerArrivalDate = { gte: new Date(workerArrivalDate) };
+      const date = new Date(workerArrivalDate);
+      if (!isNaN(date.getTime())) where.workerArrivalDate = { gte: date };
     }
-
-    const orders = await this.prisma.order.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        region: true,
-        social: true,
-        orderStatus: true,
-        roomMeasurement: true,
-      },
-    });
-
-    const total = await this.prisma.order.count({ where });
-
-    const pagination = {
+  
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          region: true,
+          social: true,
+          orderStatus: true,
+          roomMeasurement: true,
+        },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+  
+    return new ResponseDto(true, 'Successfully found!', orders, {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-    };
-
-    return new ResponseDto(true, 'Successfully found!!!', orders, pagination);
-  }
+    });
+  }  
 
   async findOne(id: string): Promise<IResponse> {
     const order = await this.prisma.order.findUnique({
