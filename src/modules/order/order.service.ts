@@ -124,7 +124,7 @@ export class OrderService {
       where.socialId = socialId;
     }
     if (userStatus === 'ADMIN' || userStatus === 'MANAGER') {
-      if (status) {
+      if (status && status.trim().length > 2) {
         where.status = status;
       }
     } else {
@@ -133,22 +133,22 @@ export class OrderService {
 
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate && startDate.trim() !== '') {
+      if (startDate && startDate.trim().length > 2) {
         const date = new Date(startDate);
         if (!isNaN(date.getTime())) where.createdAt.gte = date;
       }
-      if (endDate && endDate.trim() !== '') {
+      if (endDate && endDate.trim().length > 2) {
         const date = new Date(endDate);
         if (!isNaN(date.getTime())) where.createdAt.lte = date;
       }
     }
 
-    if (endDateJob && endDateJob.trim() !== '') {
+    if (endDateJob && endDateJob.trim().length > 2) {
       const date = new Date(endDateJob);
       if (!isNaN(date.getTime())) where.endDateJob = { gte: date };
     }
 
-    if (workerArrivalDate && workerArrivalDate.trim() !== '') {
+    if (workerArrivalDate && workerArrivalDate.trim().length > 2) {
       const date = new Date(workerArrivalDate);
       if (!isNaN(date.getTime())) where.workerArrivalDate = { gte: date };
     }

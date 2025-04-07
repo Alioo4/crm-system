@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min, IsDateString } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class GetOrderFilterDto {
@@ -35,18 +35,18 @@ export class GetOrderFilterDto {
   search?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString()
   startDate?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString()
   endDate?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString()
   endDateJob?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString()
   workerArrivalDate?: string;
 }
