@@ -30,6 +30,7 @@ import {
 } from '@nestjs/swagger';
 import { User } from 'src/common/decorators/get-user.decarator';
 import { Public } from 'src/common/decorators/public.decorator';
+import { GetOrderFilterDto } from './dto/query.dto';
 
 @ApiBearerAuth()
 @ApiTags('Order')
@@ -63,30 +64,12 @@ export class OrderController {
   @ApiQuery({ name: 'endDateJob', required: false, type: String, description: 'Filter by end date of job' })
   @ApiQuery({ name: 'workerArrivalDate', required: false, type: String, description: 'Filter by worker arrival date' })
   findAll(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('search') search?: string,
-    @Query('orderStatusId') orderStatusId?: string,
-    @Query('socialId') socialId?: string,
-    @Query('regionId') regionId?: string,
-    @Query('status') status?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('endDateJob') endDateJob?: string,
-    @Query('workerArrivalDate') workerArrivalDate?: string,
+    @User() user: {sub: string, role: string},
+    @Query() query: GetOrderFilterDto,
   ) {
     return this.orderService.findAll({
-      page,
-      limit,
-      orderStatusId,
-      socialId,
-      regionId,
-      status,
-      startDate,
-      endDate,
-      endDateJob,
-      workerArrivalDate,
-      search,
+      userStatus: user.role,
+      ...query,
     });
   }
 

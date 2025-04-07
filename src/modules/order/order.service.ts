@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { IResponse, ResponseDto } from 'src/common/types';
 import { HistoryService } from '../history/history.service';
 import { Status } from '@prisma/client';
+import { isUUID } from 'src/common/types/isUuid';
 
 @Injectable()
 export class OrderService {
@@ -50,14 +51,12 @@ export class OrderService {
       );
 
     const safeWorkerArrivalDate =
-      typeof workerArrivalDate === 'string' 
+      typeof workerArrivalDate === 'string'
         ? new Date(workerArrivalDate)
         : undefined;
 
     const safeEndDateJob =
-      typeof endDateJob === 'string' 
-        ? new Date(endDateJob)
-        : undefined;
+      typeof endDateJob === 'string' ? new Date(endDateJob) : undefined;
 
     const order = await this.prisma.order.create({
       data: {
@@ -73,6 +72,7 @@ export class OrderService {
   }
 
   async findAll(filters: {
+    userStatus: string;
     page?: number;
     limit?: number;
     orderStatusId?: string;
@@ -86,6 +86,7 @@ export class OrderService {
     search?: string;
   }) {
     const {
+      userStatus,
       page = 1,
       limit = 10,
       orderStatusId,
@@ -104,44 +105,50 @@ export class OrderService {
 
     const where: any = {};
 
-    if (search) {
+    if (typeof search === 'string' && search.trim().length > 2) {
+      console.log('search', search.length);
+      
       where.OR = [
         { phone: { contains: search, mode: 'insensitive' } },
         { name: { contains: search, mode: 'insensitive' } },
       ];
     }
 
-    if (orderStatusId) {
+    if (orderStatusId && isUUID(orderStatusId)) {
       where.orderStatusId = orderStatusId;
     }
-    if (regionId) {
+    if (regionId && isUUID(regionId)) {
       where.regionId = regionId;
     }
-    if (socialId) {
+    if (socialId && isUUID(socialId)) {
       where.socialId = socialId;
     }
-    if (status) {
-      where.status = status;
+    if (userStatus === 'ADMIN' || userStatus === 'MANAGER') {
+      if (status) {
+        where.status = status;
+      }
+    } else {
+      where.status = userStatus;
     }
 
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) {
+      if (startDate && startDate.trim() !== '') {
         const date = new Date(startDate);
         if (!isNaN(date.getTime())) where.createdAt.gte = date;
       }
-      if (endDate) {
+      if (endDate && endDate.trim() !== '') {
         const date = new Date(endDate);
         if (!isNaN(date.getTime())) where.createdAt.lte = date;
       }
     }
 
-    if (endDateJob) {
+    if (endDateJob && endDateJob.trim() !== '') {
       const date = new Date(endDateJob);
       if (!isNaN(date.getTime())) where.endDateJob = { gte: date };
     }
 
-    if (workerArrivalDate) {
+    if (workerArrivalDate && workerArrivalDate.trim() !== '') {
       const date = new Date(workerArrivalDate);
       if (!isNaN(date.getTime())) where.workerArrivalDate = { gte: date };
     }
@@ -173,6 +180,12 @@ export class OrderService {
   async findOne(id: string): Promise<IResponse> {
     const order = await this.prisma.order.findUnique({
       where: { id },
+      include: {
+        region: true,
+        social: true,
+        orderStatus: true,
+        roomMeasurement: true,
+      },
     });
 
     if (!order) {
