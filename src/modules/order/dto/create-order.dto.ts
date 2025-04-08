@@ -43,7 +43,6 @@ export class CreateOrderDto {
     example: '2025-04-10T08:00:00.000Z',
   })
   @IsDateString()
-  @Transform(({ value }) => (value?.trim() === '' ? undefined : value))
   @IsOptional()
   endDateJob?: Date;
 
@@ -52,7 +51,6 @@ export class CreateOrderDto {
     example: '2025-04-05T08:00:00.000Z',
   })
   @IsDateString()
-  @Transform(({ value }) => (value?.trim() === '' ? undefined : value))
   @IsOptional()
   workerArrivalDate?: Date;
 
@@ -75,6 +73,7 @@ export class CreateOrderDto {
     description: 'Region Id',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
+  @IsOptional()
   regionId?: string;
 
   @ApiPropertyOptional({ description: 'Longitude', example: 69.2401 })

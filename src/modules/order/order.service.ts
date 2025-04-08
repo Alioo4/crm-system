@@ -64,6 +64,8 @@ export class OrderService {
         socialId: social?.id || null,
         orderStatusId: orderStatus?.id || null,
         status: status?.trim() ? status : undefined,
+        workerArrivalDate: safeWorkerArrivalDate || null,
+        endDateJob: safeEndDateJob || null,
         ...rest,
       },
     });
@@ -212,7 +214,7 @@ export class OrderService {
       name: findOrder.name,
       phone: findOrder.phone,
       comment: findOrder.comment,
-      endDateJob: findOrder.comment,
+      endDateJob: findOrder.endDateJob,
       workerArrivalDate: findOrder.workerArrivalDate,
       orderId: findOrder.id,
       total: findOrder.total,
