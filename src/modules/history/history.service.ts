@@ -14,6 +14,7 @@ export class HistoryService {
   }
 
   async findAll(
+    userStatus: string,
     page: number = 1,
     limit: number = 10,
     search?: string,
@@ -24,7 +25,7 @@ export class HistoryService {
   ) {
     const skip = (page - 1) * limit;
 
-    const where: Prisma.HistoryWhereInput = {};
+    const where: any = {};
 
     if (search) {
       where.OR = [
@@ -51,6 +52,10 @@ export class HistoryService {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = new Date(startDate);
       if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    if (userStatus !== 'ADMIN' && userStatus !== 'MANAGER') {
+      where.status = userStatus;
     }
 
     const histories = await this.prisma.history.findMany({

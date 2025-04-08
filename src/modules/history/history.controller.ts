@@ -7,6 +7,7 @@ import {
   ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
+import { User } from 'src/common/decorators/get-user.decarator';
 
 @ApiBearerAuth()
 @Controller('history')
@@ -23,6 +24,7 @@ export class HistoryController {
   @ApiQuery({ name: 'startDate', required: false, type: String })
   @ApiQuery({ name: 'endDate', required: false, type: String })
   async findAll(
+    @User() user: {sub: string, role: string},
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
@@ -32,6 +34,7 @@ export class HistoryController {
     @Query('endDate') endDate?: string,
   ) {
     return this.historyService.findAll(
+      user.role,
       page,
       limit,
       search,

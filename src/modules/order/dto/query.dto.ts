@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class GetOrderFilterDto {
@@ -28,6 +28,7 @@ export class GetOrderFilterDto {
 
   @IsOptional()
   @IsString()
+  @IsIn(['MANAGER', 'ZAMIR', 'ZAVOD', 'USTANOVCHIK', 'DONE', 'CANCEL'])
   status?: string;
 
   @IsOptional()

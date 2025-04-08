@@ -5,6 +5,7 @@ import {
   IsUUID,
   IsDateString,
   IsEnum,
+  IsNumber,
 } from 'class-validator';
 
 export enum Status {
@@ -32,10 +33,12 @@ export class UpdateOrderDto {
   @IsString()
   comment?: string;
 
-  @ApiPropertyOptional({ example: 'Social Media', maxLength: 128 })
+  @ApiProperty({
+    description: 'Social Id',
+    example: '550e8400-e29b-41d4-a716-446655440001',
+  })
   @IsOptional()
-  @IsString()
-  source?: string;
+  socialId?: string;
 
   @ApiPropertyOptional({ example: '2025-04-01T10:00:00.000Z' })
   @IsOptional()
@@ -55,4 +58,34 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsEnum(Status)
   status?: Status;
+
+  @ApiPropertyOptional({
+    description: 'Workers coming date',
+    example: '2025-04-05T08:00:00.000Z',
+  })
+  @IsDateString()
+  @IsOptional()
+  workerArrivalDate?: Date;
+
+  @ApiPropertyOptional({ description: 'Total price', example: 1200000 })
+  @IsNumber()
+  @IsOptional()
+  total?: number;
+
+  @ApiPropertyOptional({ description: 'Pre-payment', example: 500000 })
+  @IsNumber()
+  @IsOptional()
+  prePayment?: number;
+
+  @ApiPropertyOptional({ description: 'Due-amount', example: 700000 })
+  @IsNumber()
+  @IsOptional()
+  dueAmount?: number;
+
+  @ApiProperty({
+    description: 'Region Id',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsOptional()
+  regionId?: string;
 }
