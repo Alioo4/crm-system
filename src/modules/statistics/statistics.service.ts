@@ -36,14 +36,11 @@ export class StatisticsService {
 
     const orders = await this.prisma.order.findMany({
       where,
-      select: {
-        id: true,
-        createdAt: true,
-        updatedAt: true,
-        status: true,
-        total: true,
-        prePayment: true,
-        dueAmount: true,
+      include: {
+        region: true,
+        social: true,
+        orderStatus: true,
+        roomMeasurement: true,
       },
       orderBy: {
         createdAt: 'desc', 
@@ -67,6 +64,9 @@ export class StatisticsService {
       totalOrders: totalOrders,
     }
 
-    return new ResponseDto(true, 'Successfully found!', responseData)
+    return new ResponseDto(true, 'Successfully found!', {
+      ...responseData,
+      orders,
+    })
   }
 }

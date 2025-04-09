@@ -92,4 +92,14 @@ export class UpdateOrderDto {
   })
   @IsOptional()
   regionId?: string;
+
+  @ApiPropertyOptional({ description: 'Longitude', example: 69.2401 })
+  @IsNumber()
+  @IsOptional()
+  longitude?: number;
+
+  @ApiPropertyOptional({ description: 'Latitude', example: 41.3111 })
+  @IsNumber()
+  @IsOptional()
+  latitude?: number;
 }
