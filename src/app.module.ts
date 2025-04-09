@@ -10,6 +10,7 @@ import { RegionsModule } from './modules/regions/regions.module';
 import { SocialModule } from './modules/social/social.module';
 import { RoomMeansurementModule } from './modules/room-meansurement/room-meansurement.module';
 import { HistoryModule } from './modules/history/history.module';
+import { StatisticsModule } from './modules/statistics/statistics.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { HistoryModule } from './modules/history/history.module';
     SocialModule,
     RoomMeansurementModule,
     HistoryModule,
+    StatisticsModule,
   ],
   controllers: [],
   providers: [

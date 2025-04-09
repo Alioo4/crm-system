@@ -104,9 +104,9 @@ export class CreateOrderDto {
     description: 'Status',
     example: Status.MANAGER,
     enum: Status,
+    required: false,
   })
   @IsEnum(Status)
-  @Transform(({ value }) => (value?.trim() === '' ? undefined : value))
   @IsOptional()
   status?: Status;
 }
