@@ -109,7 +109,7 @@ export class OrderService {
 
     if (typeof search === 'string' && search.trim().length > 2) {
       console.log('search', search.length);
-      
+
       where.OR = [
         { phone: { contains: search, mode: 'insensitive' } },
         { name: { contains: search, mode: 'insensitive' } },
@@ -237,7 +237,11 @@ export class OrderService {
 
     await this.prisma.order.update({
       where: { id },
-      data: updateOrderDto,
+      data: {
+        ...updateOrderDto,
+        orderStatusId:
+          status === Status.ZAMIR ? null : updateOrderDto.orderStatusId,
+      },
     });
 
     return new ResponseDto(true, 'Order updated successfully');

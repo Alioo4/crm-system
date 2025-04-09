@@ -18,7 +18,7 @@ export class AuthService {
   async login(userData: LoginDto) {
     const findUser = await this.prisma.user.findUnique({
       where: { phone: userData.phone },
-      select: { id: true, password: true, role: true },
+      select: { id: true, password: true, role: true, name: true, phone: true, createdAt: true },
     });
 
     if (!findUser) {
@@ -40,6 +40,9 @@ export class AuthService {
     return new ResponseDto(true, 'Sucessfully login', {
       accessToken,
       role: findUser.role,
+      name: findUser.name,
+      phone: findUser.phone,
+      createdAt: findUser.createdAt,
     });
   }
 
