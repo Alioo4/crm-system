@@ -31,9 +31,21 @@ model Order {
   workerArrivalDate DateTime? @map("worker_arrival_date")
   status            Status    @default(MANAGER)
 
-  total      Int? 
-  prePayment Int? @map("pre_payment") 
-  dueAmount  Int? @map("due_amount") 
+  managerName  String? @map("manager_name") @db.VarChar(128)
+  managerphone String? @map("manager_phone") @db.VarChar(16)
+
+  zamirName  String? @map("zamir_name") @db.VarChar(128)
+  zamirPhone String? @map("zamir_phone") @db.VarChar(16)
+
+  zavodName  String? @map("zavod_name") @db.VarChar(128)
+  zavodPhone String? @map("zavod_phone") @db.VarChar(16)
+
+  ustName  String? @map("ust_name") @db.VarChar(128)
+  ustPhone String? @map("ust_phone") @db.VarChar(16)
+
+  total      Int?
+  prePayment Int? @map("pre_payment")
+  dueAmount  Int? @map("due_amount")
 
   regionId  String? @map("region_id") @db.Uuid
   region    Region? @relation(fields: [regionId], references: [id], onDelete: Cascade)
@@ -89,9 +101,9 @@ model RoomMeasurement {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  name  String @db.VarChar(128)
-  key   String @db.VarChar(128)
-  value String @db.VarChar(128)
+  name  String? @db.VarChar(128)
+  key   String? @db.VarChar(128)
+  value String? @db.VarChar(128)
 
   orderId String @map("order_id") @db.Uuid
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -110,11 +122,23 @@ model History {
   endDateJob        DateTime? @map("end_date_job")
   workerArrivalDate DateTime? @map("worker_arrival_date")
   status            Status
-  orderId           String?    @db.Uuid
+  orderId           String?   @db.Uuid
 
-  total      Int? 
-  prePayment Int? @map("pre_payment") 
+  total      Int?
+  prePayment Int? @map("pre_payment")
   dueAmount  Int? @map("due_amount")
+
+  managerName  String? @map("manager_name") @db.VarChar(128)
+  managerphone String? @map("manager_phone") @db.VarChar(16)
+
+  zamirName  String? @map("zamir_name") @db.VarChar(128)
+  zamirPhone String? @map("zamir_phone") @db.VarChar(16)
+
+  zavodName  String? @map("zavod_name") @db.VarChar(128)
+  zavodPhone String? @map("zavod_phone") @db.VarChar(16)
+
+  ustName  String? @map("ust_name") @db.VarChar(128)
+  ustPhone String? @map("ust_phone") @db.VarChar(16)
 
   regionId  String? @map("region_id") @db.Uuid
   region    Region? @relation(fields: [regionId], references: [id], onDelete: Cascade)

@@ -86,18 +86,22 @@ export class OrderStatusService {
       );
     }
 
-    const relatedOrders = await this.prisma.order.count({
+    const relatedOrders = await this.prisma.order.findMany({
       where: { orderStatusId: id },
+      select: {
+        id: true,
+      },
     });
 
-    if (relatedOrders > 0) {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'Cannot delete order status because it is linked to existing orders',
-        ),
-      );
+    for(let i = 0; i < relatedOrders.length; i++) {
+      await this.prisma.order.update({
+        where: { id: relatedOrders[i].id },
+        data: {
+          orderStatusId: null,
+        },
+      });
     }
+    
 
     await this.prisma.orderStatus.delete({ where: { id } });
     return new ResponseDto(true, 'Successfully deleted status!!!');

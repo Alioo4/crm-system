@@ -46,8 +46,11 @@ export class OrderController {
     description: 'Order successfully created',
     type: ResponseOrderPosDto,
   })
-  create(@Body() createOrderDto: CreateOrderDto): Promise<IResponse> {
-    return this.orderService.create(createOrderDto);
+  create(
+    @Body() createOrderDto: CreateOrderDto,
+    @User() user: {sub: string, role: string}
+  ): Promise<IResponse> {
+    return this.orderService.create(createOrderDto, user);
   }
 
   @Get()
@@ -114,7 +117,7 @@ export class OrderController {
     @Body() updateOrderDto: UpdateOrderDto,
     @User() user: {sub: string, role: string}
   ): Promise<IResponse> {
-    return this.orderService.update(id, updateOrderDto, user.role);
+    return this.orderService.update(id, updateOrderDto, user);
   }
 
   @Delete(':id')

@@ -84,17 +84,20 @@ export class RegionsService {
       );
     }
 
-    const relatedOrders = await this.prisma.order.count({
+    const relatedOrders = await this.prisma.order.findMany({
       where: { regionId: id },
+      select: {
+        id: true,
+      },
     });
 
-    if (relatedOrders > 0) {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'Cannot delete region because it is linked to existing orders.',
-        ),
-      );
+    for(let i = 0; i < relatedOrders.length; i++) {
+      await this.prisma.order.update({
+        where: { id: relatedOrders[i].id },
+        data: {
+          regionId: null,
+        },
+      });
     }
 
     await this.prisma.region.delete({ where: { id } });

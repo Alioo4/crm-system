@@ -17,7 +17,10 @@ export class OrderService {
     private readonly prisma: PrismaService,
     private readonly history: HistoryService,
   ) {}
-  async create(createOrderDto: CreateOrderDto): Promise<IResponse> {
+  async create(
+    createOrderDto: CreateOrderDto,
+    { sub, role },
+  ): Promise<IResponse> {
     const {
       regionId,
       socialId,
@@ -27,6 +30,14 @@ export class OrderService {
       status,
       ...rest
     } = createOrderDto;
+
+    const findUseer = await this.prisma.user.findUnique({
+      where: { id: sub },
+      select: {
+        name: true,
+        phone: true,
+      },
+    });
 
     const region = regionId
       ? await this.prisma.region.findUnique({ where: { id: regionId } })
@@ -66,6 +77,8 @@ export class OrderService {
         status: status?.trim() ? status : undefined,
         workerArrivalDate: safeWorkerArrivalDate || null,
         endDateJob: safeEndDateJob || null,
+        managerName: findUseer?.name || null,
+        managerphone: findUseer?.phone || null,
         ...rest,
       },
     });
@@ -200,7 +213,7 @@ export class OrderService {
   async update(
     id: string,
     updateOrderDto: UpdateOrderDto,
-    role: string,
+    { sub, role },
   ): Promise<IResponse> {
     const { status } = updateOrderDto;
 
@@ -208,6 +221,40 @@ export class OrderService {
 
     if (!findOrder) {
       throw new BadRequestException(new ResponseDto(false, 'Order not found'));
+    }
+
+    const findUseer = await this.prisma.user.findUnique({
+      where: { id: sub },
+      select: {
+        name: true,
+        phone: true,
+      },
+    });
+
+    if (role === 'ZAMIR') {
+      await this.prisma.order.update({
+        where: { id },
+        data: {
+          zamirName: findUseer?.name || null,
+          zamirPhone: findUseer?.phone || null,
+        },
+      });
+    } else if (role === 'USTANOVCHIK') {
+      await this.prisma.order.update({
+        where: { id },
+        data: {
+          ustName: findUseer?.name || null,
+          ustPhone: findUseer?.phone || null,
+        },
+      });
+    } else if (role === 'ZAVOD') {
+      await this.prisma.order.update({
+        where: { id },
+        data: {
+          zavodName: findUseer?.name || null,
+          zavodPhone: findUseer?.phone || null,
+        },
+      });
     }
 
     const history: any = {
@@ -235,6 +282,31 @@ export class OrderService {
       await this.history.create(history);
     }
 
+    if (status === Status.DONE) {
+      const findHistory = await this.prisma.history.findFirst({
+        where: { orderId: id },
+        select: {
+          id: true,
+        },
+      });
+
+      if (findHistory) {
+        await this.prisma.history.update({
+          where: { id: findHistory.id },
+          data: {
+            managerName: findOrder.managerName,
+            managerphone: findOrder.managerphone,
+            zamirName: findOrder.zamirName,
+            zamirPhone: findOrder.zamirPhone,
+            ustName: findOrder.ustName,
+            ustPhone: findOrder.ustPhone,
+            zavodName: findOrder.zavodName,
+            zavodPhone: findOrder.zavodPhone,
+          },
+        });
+      }
+    }
+
     await this.prisma.order.update({
       where: { id },
       data: {
@@ -256,17 +328,18 @@ export class OrderService {
       throw new BadRequestException(new ResponseDto(false, 'Order not found'));
     }
 
-    const relatedOrders = await this.prisma.roomMeasurement.count({
+    const relatedOrders = await this.prisma.roomMeasurement.findMany({
       where: { orderId: id },
+      select: {
+        id: true,
+      },
     });
 
-    if (relatedOrders > 0) {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'Cannot delete order status because it is linked to existing orders.',
-        ),
-      );
+    const ids = relatedOrders.map((order) => order.id);
+    if (ids.length !== 0) {
+      await this.prisma.roomMeasurement.deleteMany({
+        where: { id: { in: ids } },
+      });
     }
 
     await this.prisma.order.delete({
