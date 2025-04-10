@@ -40,7 +40,6 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
-  @Public()
   @ApiOperation({ summary: 'Create a new order' })
   @ApiCreatedResponse({
     description: 'Order successfully created',
