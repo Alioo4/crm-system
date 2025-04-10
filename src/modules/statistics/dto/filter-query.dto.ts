@@ -1,6 +1,6 @@
-import { Prisma, Status } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Status } from '@prisma/client';
+import { IsDateString, IsEnum, IsInt, IsOptional, Min } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StatisticsQueryDto {
   @ApiPropertyOptional({
@@ -24,11 +24,27 @@ export class StatisticsQueryDto {
   @ApiPropertyOptional({
     description: 'Status to filter statistics',
     enum: Status,
-    example: Status.DONE, 
+    example: Status.DONE,
     default: Status.DONE,
     required: false,
   })
   @IsEnum(Status)
   @IsOptional()
   status?: Status;
+
+  @ApiPropertyOptional({
+    description: 'Page number for pagination (starts from 1)',
+    example: 1,
+    required: false,
+  })
+  @IsOptional()
+  page?: number = 1;
+
+  @ApiPropertyOptional({
+    description: 'Limit of items per page',
+    example: 10,
+    required: false,
+  })
+  @IsOptional()
+  limit?: number = 10;
 }
