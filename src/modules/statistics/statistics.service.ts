@@ -11,70 +11,57 @@ export class StatisticsService {
     if (role !== 'ADMIN') {
       throw new ForbiddenException('Permission denied');
     }
-
+  
     const where: any = {
-      status: 'DONE',
+      status: query.status ?? 'DONE',
     };
-
+  
+    if (query.startDate || query.endDate) {
+      where.updatedAt = {};
+      if (query.startDate) {
+        where.updatedAt.gte = new Date(query.startDate);
+      }
+      if (query.endDate) {
+        where.updatedAt.lte = new Date(query.endDate);
+      }
+    }
+  
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
-    const skip = Number((page - 1) * limit);
-
-    if (query.startDate) {
-      where.updatedAt = {
-        ...where.updatedAt,
-        gte: new Date(query.startDate),
-      };
-    }
-
-    if (query.endDate) {
-      where.updatedAt = {
-        ...where.updatedAt,
-        lte: new Date(query.endDate),
-      };
-    }
-
-    if (query.status) {
-      where.status = query.status;
-    }
-
-    const orders = await this.prisma.order.findMany({
-      where,
-      include: {
-        region: true,
-        social: true,
-        orderStatus: true,
-        roomMeasurement: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip,
-      take: limit,
-    });
-
-    const totalOrders = await this.prisma.order.count({ where });
-    const totalAmount = await this.prisma.order.aggregate({
-      where,
-      _sum: {
-        total: true,
-        prePayment: true,
-        dueAmount: true,
-      },
-    });
-
-    const responseData = {
-      totalSum: totalAmount._sum.total || 0,
-      totalPrePayment: totalAmount._sum.prePayment || 0,
-      totalDueAmount: totalAmount._sum.dueAmount || 0,
-      totalOrders: totalOrders,
-    };
-
+    const skip = (page - 1) * limit;
+  
+    const [orders, totalOrders, totalAmount] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        include: {
+          region: true,
+          social: true,
+          orderStatus: true,
+          roomMeasurement: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.order.count({ where }),
+      this.prisma.order.aggregate({
+        where,
+        _sum: {
+          total: true,
+          prePayment: true,
+          dueAmount: true,
+        },
+      }),
+    ]);
+  
     return new ResponseDto(
       true,
       'Successfully found!',
       {
-        ...responseData,
+        totalSum: totalAmount._sum.total || 0,
+        totalPrePayment: totalAmount._sum.prePayment || 0,
+        totalDueAmount: totalAmount._sum.dueAmount || 0,
+        totalOrders,
         orders,
       },
       {
@@ -85,4 +72,5 @@ export class StatisticsService {
       },
     );
   }
+  
 }
