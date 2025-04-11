@@ -21,15 +21,15 @@ export class StatisticsService {
     const skip = Number((page - 1) * limit);
 
     if (query.startDate) {
-      where.createdAt = {
-        ...where.createdAt,
+      where.updatedAt = {
+        ...where.updatedAt,
         gte: new Date(query.startDate),
       };
     }
 
     if (query.endDate) {
-      where.createdAt = {
-        ...where.createdAt,
+      where.updatedAt = {
+        ...where.updatedAt,
         lte: new Date(query.endDate),
       };
     }
