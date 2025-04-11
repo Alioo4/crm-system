@@ -11,25 +11,37 @@ export class StatisticsService {
     if (role !== 'ADMIN') {
       throw new ForbiddenException('Permission denied');
     }
-  
+
     const where: any = {
       status: query.status ?? 'DONE',
     };
-  
+
     if (query.startDate || query.endDate) {
-      where.updatedAt = {};
-      if (query.startDate) {
-        where.updatedAt.gte = new Date(query.startDate);
-      }
-      if (query.endDate) {
-        where.updatedAt.lte = new Date(query.endDate);
+      const start = query.startDate ? new Date(query.startDate) : undefined;
+      const end = query.endDate ? new Date(query.endDate) : undefined;
+    
+      if (start && end && start.toDateString() === end.toDateString()) {
+        const startOfDay = new Date(start);
+        startOfDay.setHours(0, 0, 0, 0);
+    
+        const endOfDay = new Date(start);
+        endOfDay.setHours(23, 59, 59, 999);
+    
+        where.updatedAt = {
+          gte: startOfDay,
+          lte: endOfDay,
+        };
+      } else {
+        where.updatedAt = {};
+        if (start) where.updatedAt.gte = start;
+        if (end) where.updatedAt.lte = end;
       }
     }
-  
+
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
     const skip = (page - 1) * limit;
-  
+
     const [orders, totalOrders, totalAmount] = await Promise.all([
       this.prisma.order.findMany({
         where,
@@ -53,7 +65,7 @@ export class StatisticsService {
         },
       }),
     ]);
-  
+
     return new ResponseDto(
       true,
       'Successfully found!',
@@ -72,5 +84,4 @@ export class StatisticsService {
       },
     );
   }
-  
 }
