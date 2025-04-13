@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateHistoryDto } from './dto/create-history.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
 import { ResponseDto } from 'src/common/types';
 
 @Injectable()
@@ -77,7 +76,7 @@ export class HistoryService {
       const rooms = await this.prisma.roomMeasurement.findMany({
         where: { orderId: order.orderId || undefined },
       });
-      
+
       const data = { ...order, roomMeasurement: rooms };
       result.push(data);
     }
@@ -98,7 +97,15 @@ export class HistoryService {
   }
 
   async findOne(id: string) {
-    const isExist = await this.prisma.history.findUnique({ where: { id } });
+    const isExist = await this.prisma.history.findUnique({
+      where: { id },
+      include: { region: true, social: true },
+    });
+
+    const rooms = await this.prisma.roomMeasurement.findMany({
+      where: { orderId: isExist?.orderId || undefined },
+    });
+    const data = { ...isExist, roomMeasurement: rooms };
 
     if (!isExist) {
       throw new NotFoundException(
@@ -106,6 +113,6 @@ export class HistoryService {
       );
     }
 
-    return new ResponseDto(true, 'Successfully find!!!', isExist);
+    return new ResponseDto(true, 'Successfully find!!!', data);
   }
 }
