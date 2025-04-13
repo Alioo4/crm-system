@@ -28,6 +28,8 @@ export class StatisticsService {
         { zavodPhone: { contains: search, mode: 'insensitive' } },
         { ustName: { contains: search, mode: 'insensitive' } },
         { ustPhone: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
       ];
     }
 
