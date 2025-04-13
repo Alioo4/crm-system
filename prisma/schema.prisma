@@ -103,7 +103,7 @@ model RoomMeasurement {
 
   name  String? @db.VarChar(128)
   key   String? @db.VarChar(128)
-  value String? @db.VarChar(128)
+  value String? @db.VarChar(512)
 
   orderId String @map("order_id") @db.Uuid
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)

@@ -27,6 +27,8 @@ export class HistoryService {
 
     const where: any = {};
 
+    const result: any = [];
+
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -69,12 +71,23 @@ export class HistoryService {
       },
     });
 
+    for (let i = 0; i < histories.length; i++) {
+      const order = histories[i];
+
+      const rooms = await this.prisma.roomMeasurement.findMany({
+        where: { orderId: order.orderId || undefined },
+      });
+      
+      const data = { ...order, roomMeasurement: rooms };
+      result.push(data);
+    }
+
     const total = await this.prisma.history.count({ where });
 
     return {
       success: true,
       message: 'Histories fetched successfully',
-      data: histories,
+      data: result,
       pagination: {
         total,
         page,

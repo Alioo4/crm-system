@@ -121,11 +121,10 @@ export class OrderService {
     const where: any = {};
 
     if (typeof search === 'string' && search.trim().length > 2) {
-      console.log('search', search.length);
-
       where.OR = [
         { phone: { contains: search, mode: 'insensitive' } },
         { name: { contains: search, mode: 'insensitive' } },
+        { region: { name: { contains: search, mode: 'insensitive' } } },
       ];
     }
 

@@ -1,5 +1,5 @@
 import { Status } from '@prisma/client';
-import { IsDateString, IsEnum, IsInt, IsOptional, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StatisticsQueryDto {
@@ -20,6 +20,15 @@ export class StatisticsQueryDto {
   @IsDateString()
   @IsOptional()
   endDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Search by name and phone in workers',
+    example: '998332218888',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  search?: string;
 
   @ApiPropertyOptional({
     description: 'Status to filter statistics',
