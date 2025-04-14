@@ -301,6 +301,8 @@ export class OrderService {
             ustPhone: findOrder.ustPhone,
             zavodName: findOrder.zavodName,
             zavodPhone: findOrder.zavodPhone,
+            getAllPaymentDate: findOrder.getAllPaymentDate,
+            getPrePaymentDate: findOrder.getPrePaymentDate,
           },
         });
       }

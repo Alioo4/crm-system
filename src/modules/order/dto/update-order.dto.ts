@@ -51,6 +51,16 @@ export class UpdateOrderDto {
   @IsUUID()
   orderStatusId?: string;
 
+  @ApiPropertyOptional({ example: '2025-04-01T10:00:00.000Z', required: false })
+  @IsOptional()
+  @IsDateString()
+  getAllPaymentDate?: Date;
+
+  @ApiPropertyOptional({ example: '2025-04-01T10:00:00.000Z', required: false })
+  @IsOptional()
+  @IsDateString()
+  getPrePaymentDate?: Date;
+
   @ApiPropertyOptional({
     example: Status.MANAGER,
     enum: Status,

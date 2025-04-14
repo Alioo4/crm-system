@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaClient } from "@prisma/client";
+import { timezoneOffsetMiddleware } from "src/common/middlewares/prisma.middleware";
 
 @Injectable()
 export class PrismaService
@@ -39,6 +40,7 @@ export class PrismaService
 
   async onModuleInit() {
     try {
+      this.$use(timezoneOffsetMiddleware);
       this.logger.log("Connecting to database...");
       await this.$connect();
       this.logger.log("Successfully connected to database");

@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatisticsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
+import { Status } from '@prisma/client';
 
 @Injectable()
 export class StatisticsService {
@@ -17,42 +18,14 @@ export class StatisticsService {
     };
 
     const search = query.search?.trim();
+    if (search) where.OR = this.buildSearchFilters(search);
 
-    if (search) {
-      where.OR = [
-        { managerName: { contains: search, mode: 'insensitive' } },
-        { managerphone: { contains: search, mode: 'insensitive' } },
-        { zamirName: { contains: search, mode: 'insensitive' } },
-        { zamirPhone: { contains: search, mode: 'insensitive' } },
-        { zavodName: { contains: search, mode: 'insensitive' } },
-        { zavodPhone: { contains: search, mode: 'insensitive' } },
-        { ustName: { contains: search, mode: 'insensitive' } },
-        { ustPhone: { contains: search, mode: 'insensitive' } },
-        { name: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+    const isZamir = query.status === Status.ZAMIR;
+    const dateField = isZamir ? 'getPrePaymentDate' : 'getAllPaymentDate';
+    const dateFilter = this.buildDateFilter(query.startDate, query.endDate);
 
-    if (query.startDate || query.endDate) {
-      const start = query.startDate ? new Date(query.startDate) : undefined;
-      const end = query.endDate ? new Date(query.endDate) : undefined;
-
-      if (start && end && start.toDateString() === end.toDateString()) {
-        const startOfDay = new Date(start);
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const endOfDay = new Date(start);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        where.updatedAt = {
-          gte: startOfDay,
-          lte: endOfDay,
-        };
-      } else {
-        where.updatedAt = {};
-        if (start) where.updatedAt.gte = start;
-        if (end) where.updatedAt.lte = end;
-      }
+    if (dateFilter) {
+      where[dateField] = dateFilter;
     }
 
     const page = Number(query.page ?? 1);
@@ -100,5 +73,50 @@ export class StatisticsService {
         totalPages: Math.ceil(totalOrders / limit),
       },
     );
+  }
+
+  private buildSearchFilters(search: string) {
+    const fields = [
+      'managerName',
+      'managerphone',
+      'zamirName',
+      'zamirPhone',
+      'zavodName',
+      'zavodPhone',
+      'ustName',
+      'ustPhone',
+      'name',
+      'phone',
+    ];
+
+    return fields.map((field) => ({
+      [field]: { contains: search, mode: 'insensitive' },
+    }));
+  }
+
+  private buildDateFilter(startDate?: string, endDate?: string) {
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+
+    if (!start && !end) return null;
+
+    if (start && end && start.toDateString() === end.toDateString()) {
+      const startOfDay = new Date(start);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(start);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      return {
+        gte: startOfDay,
+        lte: endOfDay,
+      };
+    }
+
+    const range: any = {};
+    if (start) range.gte = start;
+    if (end) range.lte = end;
+
+    return range;
   }
 }

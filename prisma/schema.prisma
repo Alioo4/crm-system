@@ -30,6 +30,8 @@ model Order {
   endDateJob        DateTime? @map("end_date_job")
   workerArrivalDate DateTime? @map("worker_arrival_date")
   status            Status    @default(MANAGER)
+  getPrePaymentDate DateTime? @map("get_pre_payment_date")
+  getAllPaymentDate DateTime? @map("get_all_payment_date")
 
   managerName  String? @map("manager_name") @db.VarChar(128)
   managerphone String? @map("manager_phone") @db.VarChar(16)
@@ -123,6 +125,8 @@ model History {
   workerArrivalDate DateTime? @map("worker_arrival_date")
   status            Status
   orderId           String?   @db.Uuid
+  getPrePaymentDate DateTime? @map("get_pre_payment_date")
+  getAllPaymentDate DateTime? @map("get_all_payment_date")
 
   total      Int?
   prePayment Int? @map("pre_payment")
