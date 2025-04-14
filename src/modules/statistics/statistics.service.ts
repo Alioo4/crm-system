@@ -20,8 +20,8 @@ export class StatisticsService {
     const search = query.search?.trim();
     if (search) where.OR = this.buildSearchFilters(search);
 
-    const isZamir = query.status === Status.ZAMIR;
-    const dateField = isZamir ? 'getPrePaymentDate' : 'getAllPaymentDate';
+    const isZavod = query.status === Status.ZAVOD;
+    const dateField = isZavod ? 'getPrePaymentDate' : 'getAllPaymentDate';
     const dateFilter = this.buildDateFilter(query.startDate, query.endDate);
 
     if (dateFilter) {
