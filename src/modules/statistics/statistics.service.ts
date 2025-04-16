@@ -20,8 +20,8 @@ export class StatisticsService {
     const search = query.search?.trim();
     if (search) where.OR = this.buildSearchFilters(search);
 
-    const isZamir = query.status === Status.ZAMIR;
-    const dateField = isZamir ? 'getPrePaymentDate' : 'getAllPaymentDate';
+    const isZavod = query.status === Status.ZAVOD;
+    const dateField = isZavod ? 'getPrePaymentDate' : 'getAllPaymentDate';
     const dateFilter = this.buildDateFilter(query.startDate, query.endDate);
 
     if (dateFilter) {
@@ -95,28 +95,29 @@ export class StatisticsService {
   }
 
   private buildDateFilter(startDate?: string, endDate?: string) {
-    const start = startDate ? new Date(startDate) : undefined;
-    const end = endDate ? new Date(endDate) : undefined;
-
-    if (!start && !end) return null;
-
+    if (!startDate && !endDate) return null;
+  
+    const getUtcDate = (dateStr: string, endOfDay = false) => {
+      const date = new Date(dateStr);
+      if (endOfDay) {
+        date.setUTCHours(23, 59, 59, 999);
+      } else {
+        date.setUTCHours(0, 0, 0, 0);
+      }
+      return date;
+    };
+  
+    const start = startDate ? getUtcDate(startDate) : undefined;
+    const end = endDate ? getUtcDate(endDate, true) : undefined;
+  
     if (start && end && start.toDateString() === end.toDateString()) {
-      const startOfDay = new Date(start);
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const endOfDay = new Date(start);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      return {
-        gte: startOfDay,
-        lte: endOfDay,
-      };
+      return { gte: start, lte: end };
     }
-
+  
     const range: any = {};
     if (start) range.gte = start;
     if (end) range.lte = end;
-
+  
     return range;
-  }
+  } 
 }
