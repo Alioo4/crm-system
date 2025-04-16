@@ -10,6 +10,12 @@ import { IResponse, ResponseDto } from 'src/common/types';
 import { HistoryService } from '../history/history.service';
 import { Status } from '@prisma/client';
 import { isUUID } from 'src/common/types/isUuid';
+import axios from 'axios';
+import {
+  generateTelegramMessage,
+  sendTelegramOrderChange,
+  sendTelegramOrderDone,
+} from 'src/common/utils/send-telegram.bot';
 
 @Injectable()
 export class OrderService {
@@ -216,7 +222,35 @@ export class OrderService {
   ): Promise<IResponse> {
     const { status } = updateOrderDto;
 
-    const findOrder = await this.prisma.order.findUnique({ where: { id } });
+    const findOrder = await this.prisma.order.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        comment: true,
+        endDateJob: true,
+        workerArrivalDate: true,
+        total: true,
+        prePayment: true,
+        dueAmount: true,
+        regionId: true,
+        longitude: true,
+        latitude: true,
+        socialId: true,
+        status: true,
+        managerName: true,
+        managerphone: true,
+        zamirName: true,
+        zamirPhone: true,
+        ustName: true,
+        ustPhone: true,
+        zavodName: true,
+        zavodPhone: true,
+        getAllPaymentDate: true,
+        getPrePaymentDate: true,
+      },
+    });
 
     if (!findOrder) {
       throw new BadRequestException(new ResponseDto(false, 'Order not found'));
@@ -271,6 +305,8 @@ export class OrderService {
       latitude: findOrder.latitude,
       socialId: findOrder.socialId,
       status: findOrder.status,
+      getAllPaymentDate: findOrder.getAllPaymentDate,
+      getPrePaymentDate: findOrder.getPrePaymentDate,
     };
 
     if (
@@ -281,14 +317,55 @@ export class OrderService {
       await this.history.create(history);
     }
 
-    if (status === Status.DONE) {
+    const changeOrder = await this.prisma.order.update({
+      where: { id },
+      data: {
+        ...updateOrderDto,
+        orderStatusId:
+          status === Status.ZAMIR ? null : updateOrderDto.orderStatusId,
+      },
+      include: {
+        region: true,
+      },
+    });
+
+    const sendTelegram = async (type: 'new' | 'changed' | 'done') => {
+      const rooms = await this.prisma.roomMeasurement.findMany({
+        where: { orderId: id },
+        select: { name: true, key: true, value: true },
+      });
+  
+      const data = {
+        name: changeOrder.name || 'name',
+        phone: changeOrder.phone || 'phone',
+        comment: changeOrder.comment || '',
+        regionName: changeOrder.region?.name || 'default',
+        lon: changeOrder.longitude || 0,
+        lat: changeOrder.latitude || 0,
+        workerArriveDate: changeOrder.workerArrivalDate?.toString() || '',
+        endedjobDate: changeOrder.endDateJob?.toString() || '',
+        rooms: rooms.map(room => ({
+          name: room.name || '',
+          key: room.key || '',
+          value: room.value || '',
+        })),
+      };
+  
+      if (type === 'new') generateTelegramMessage(data);
+      else if (type === 'changed') sendTelegramOrderChange(data);
+      else if (type === 'done') sendTelegramOrderDone(data);
+    };
+  
+    if (findOrder.status === Status.ZAMIR && status === Status.ZAVOD) {
+      await sendTelegram('new');
+    } else if (!status || (findOrder.status === Status.ZAVOD && status === Status.ZAVOD)) {
+      await sendTelegram('changed');
+    } else if (status === Status.DONE) {
       const findHistory = await this.prisma.history.findFirst({
         where: { orderId: id },
-        select: {
-          id: true,
-        },
+        select: { id: true },
       });
-
+  
       if (findHistory) {
         await this.prisma.history.update({
           where: { id: findHistory.id },
@@ -306,17 +383,10 @@ export class OrderService {
           },
         });
       }
+  
+      await sendTelegram('done');
     }
-
-    await this.prisma.order.update({
-      where: { id },
-      data: {
-        ...updateOrderDto,
-        orderStatusId:
-          status === Status.ZAMIR ? null : updateOrderDto.orderStatusId,
-      },
-    });
-
+  
     return new ResponseDto(true, 'Order updated successfully');
   }
 
