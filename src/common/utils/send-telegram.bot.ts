@@ -28,7 +28,7 @@ function createTelegramMessageText(
   title: string,
   data: OrderTelegramData,
 ): string {
-  const locationLink = `https://yandex.com/maps/?ll=${data.lon},${data.lat}&z=16`;
+  const locationLink = `https://yandex.com/maps/?ll=${data.lon},${data.lat}&z=16&rtext=~${data.lat},${data.lon}&rtt=auto`;``
 
   const roomDetails = data.rooms
     .map(
