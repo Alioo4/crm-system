@@ -28,7 +28,8 @@ function createTelegramMessageText(
   title: string,
   data: OrderTelegramData,
 ): string {
-  const locationLink = `https://yandex.com/maps/?ll=${data.lon},${data.lat}&z=16&rtext=~${data.lat},${data.lon}&rtt=auto`;``
+  const locationLink = `https://yandex.com/maps/?ll=${data.lon},${data.lat}&z=16&rtext=~${data.lat},${data.lon}&rtt=auto`;
+  ``;
 
   const roomDetails = data.rooms
     .map(
@@ -54,20 +55,30 @@ ${roomDetails}
   `.trim();
 }
 
-export function generateTelegramMessage(data: OrderTelegramData): Promise<void> {
+export function generateTelegramMessage(
+  data: OrderTelegramData,
+): Promise<void> {
   const message = createTelegramMessageText('🆕 <b>Yangi buyurtma!</b>', data);
   return sendMessageTelegram(message);
 }
 
-export function sendTelegramOrderChange(data: OrderTelegramData): Promise<void> {
-  const message = createTelegramMessageText("🔧 <b>Zakazga o‘zgartirishlar kiritildi!</b>", data);
+export function sendTelegramOrderChange(
+  data: OrderTelegramData,
+): Promise<void> {
+  const message = createTelegramMessageText(
+    '🔧 <b>Zakazga o‘zgartirishlar kiritildi!</b>',
+    data,
+  );
   return sendMessageTelegram(message);
 }
 
 export function sendTelegramOrderDone(data: OrderTelegramData): Promise<void> {
-    const message = createTelegramMessageText("🎉 <b>Buyurtma muvaffaqiyatli yakunlandi!</b>", data);
-    return sendMessageTelegram(message);
-  }
+  const message = createTelegramMessageText(
+    '🎉 <b>Buyurtma muvaffaqiyatli yakunlandi!</b>',
+    data,
+  );
+  return sendMessageTelegram(message);
+}
 
 async function sendMessageTelegram(message: string): Promise<void> {
   const botToken = configService.get<string>('TELEGRAM_BOT_TOKEN');
@@ -92,3 +103,37 @@ async function sendMessageTelegram(message: string): Promise<void> {
   }
 }
 
+interface DeletedItems {
+  name: string;
+  phone: string;
+  item: string;
+  itemName: string;
+  itemPhone?: string;
+}
+
+export async function deletedOrderSendBot(data: DeletedItems): Promise<void> {
+  const botToken = configService.get<string>('TELEGRAM_BOT_TOKEN');
+  const chatId = configService.get<string>('TELEGRAM_CHAT_ID');
+  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+
+  const message = `
+❌ <b>Buyurtma o'chirildi</b>
+
+👤 <b>O'chirgan:</b> ${data.name}
+📞 <b>Telefon raqami:</b> ${data.phone}
+
+📦 <b>O'chirilgan obyekt turi:</b> ${data.item}
+🏷️ <b>Obyekt nomi:</b> ${data.itemName}
+${data.itemPhone ? `📞 <b>Obyekt telefon raqami:</b> ${data.itemPhone}` : ''}`.trim();
+
+  try {
+    await axios.post(url, {
+      chat_id: chatId,
+      text: message,
+      parse_mode: 'HTML',
+    });
+  } catch (error) {
+    console.error('Failed to send message to Telegram:', error);
+    throw new Error('Failed to send message to Telegram');
+  }
+}
