@@ -61,6 +61,7 @@ model Order {
   orderStatus   OrderStatus? @relation(fields: [orderStatusId], references: [id], onDelete: Cascade)
 
   roomMeasurement RoomMeasurement[]
+  currencyOrder   CurrencyOrder[]
 }
 
 model OrderStatus {
@@ -162,6 +163,21 @@ model PermissionAll {
   delete Boolean @default(false)
 
   @@map("permission_all")
+}
+
+model CurrencyOrder {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name String? @unique @db.VarChar(128)
+  card Int? @default(0) @db.Integer 
+  cash Int? @default(0) @db.Integer 
+
+  orederId String @map("order_id") @db.Uuid
+  order    Order  @relation(fields: [orederId], references: [id], onDelete: Cascade)
+
+  @@map("currency_order")
 }
 
 enum Role {

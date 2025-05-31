@@ -10,7 +10,6 @@ import { IResponse, ResponseDto } from 'src/common/types';
 import { HistoryService } from '../history/history.service';
 import { Status } from '@prisma/client';
 import { isUUID } from 'src/common/types/isUuid';
-import axios from 'axios';
 import {
   generateTelegramMessage,
   sendTelegramOrderChange,
@@ -184,6 +183,7 @@ export class OrderService {
           social: true,
           orderStatus: true,
           roomMeasurement: true,
+          currencyOrder: true,
         },
       }),
       this.prisma.order.count({ where }),

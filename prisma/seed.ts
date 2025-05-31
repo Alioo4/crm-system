@@ -85,6 +85,17 @@ async function main() {
         delete: false,
       },
     }),
+    prisma.permissionAll.upsert({
+      where: { path: 'order-currency' },
+      update: {},
+      create: {
+        path: 'order-currency',
+        get: true,
+        post: true,
+        patch: true,
+        delete: true,
+      },
+    }),
     prisma.user.upsert({
       where: { phone: '998332218888' },
       update: {},
