@@ -33,15 +33,19 @@ model Order {
   getPrePaymentDate DateTime? @map("get_pre_payment_date")
   getAllPaymentDate DateTime? @map("get_all_payment_date")
 
+  managerId    String? @map("manager_id") @db.Uuid
   managerName  String? @map("manager_name") @db.VarChar(128)
   managerphone String? @map("manager_phone") @db.VarChar(16)
 
+  zamirId    String? @map("zamir_id") @db.Uuid
   zamirName  String? @map("zamir_name") @db.VarChar(128)
   zamirPhone String? @map("zamir_phone") @db.VarChar(16)
 
+  zavodId    String? @map("zavod_id") @db.Uuid
   zavodName  String? @map("zavod_name") @db.VarChar(128)
   zavodPhone String? @map("zavod_phone") @db.VarChar(16)
 
+  ustId    String? @map("ust_id") @db.Uuid
   ustName  String? @map("ust_name") @db.VarChar(128)
   ustPhone String? @map("ust_phone") @db.VarChar(16)
 

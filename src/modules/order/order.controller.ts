@@ -47,29 +47,85 @@ export class OrderController {
   })
   create(
     @Body() createOrderDto: CreateOrderDto,
-    @User() user: {sub: string, role: string}
+    @User() user: { sub: string; role: string },
   ): Promise<IResponse> {
     return this.orderService.create(createOrderDto, user);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all orders with filters and pagination' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
-  @ApiQuery({ name: 'orderStatusId', required: false, type: String, description: 'Search by order status' })
-  @ApiQuery({ name: 'socialId', required: false, type: String, description: 'Search by socialId' })
-  @ApiQuery({ name: 'regionId', required: false, type: String, description: 'Search by regionId' })
-  @ApiQuery({ name: 'search', required: false, type: String, description: 'Search by name, phone, regionName and socialName' })
-  @ApiQuery({ name: 'status', required: false, type: String, description: 'Search by status' })
-  @ApiQuery({ name: 'startDate', required: false, type: String, description: 'Filter by start date (createdAt)' })
-  @ApiQuery({ name: 'endDate', required: false, type: String, description: 'Filter by end date (createdAt)' })
-  @ApiQuery({ name: 'endDateJob', required: false, type: String, description: 'Filter by end date of job' })
-  @ApiQuery({ name: 'workerArrivalDate', required: false, type: String, description: 'Filter by worker arrival date' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  @ApiQuery({
+    name: 'orderStatusId',
+    required: false,
+    type: String,
+    description: 'Search by order status',
+  })
+  @ApiQuery({
+    name: 'socialId',
+    required: false,
+    type: String,
+    description: 'Search by socialId',
+  })
+  @ApiQuery({
+    name: 'regionId',
+    required: false,
+    type: String,
+    description: 'Search by regionId',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by name, phone, regionName and socialName',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Search by status',
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: String,
+    description: 'Filter by start date (createdAt)',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: String,
+    description: 'Filter by end date (createdAt)',
+  })
+  @ApiQuery({
+    name: 'endDateJob',
+    required: false,
+    type: String,
+    description: 'Filter by end date of job',
+  })
+  @ApiQuery({
+    name: 'workerArrivalDate',
+    required: false,
+    type: String,
+    description: 'Filter by worker arrival date',
+  })
   findAll(
-    @User() user: {sub: string, role: string},
+    @User() user: { sub: string; role: string },
     @Query() query: GetOrderFilterDto,
   ) {
     return this.orderService.findAll({
+      userId: user.sub,
       userStatus: user.role,
       ...query,
     });
@@ -114,7 +170,7 @@ export class OrderController {
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateOrderDto: UpdateOrderDto,
-    @User() user: {sub: string, role: string}
+    @User() user: { sub: string; role: string },
   ): Promise<IResponse> {
     return this.orderService.update(id, updateOrderDto, user);
   }
@@ -137,5 +193,22 @@ export class OrderController {
   })
   remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<IResponse> {
     return this.orderService.remove(id);
+  }
+
+  @Get('get-order/:orderId')
+  @ApiOperation({ summary: 'Get order by orderId' })
+  @ApiOkResponse({
+    description: 'Order found successfully',
+    type: ResponseOrderPosDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Order not found',
+    type: ResponseOrderNegDto,
+  })
+  getOrderByOrderId(
+    @Param('orderId', new ParseUUIDPipe()) orderId: string,
+    @User() user: { sub: string; role: string },
+  ) {
+    return this.orderService.getOrderByOrderId(orderId, user.sub, user.role);
   }
 }
