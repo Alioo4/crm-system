@@ -11,7 +11,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   app.enableCors();
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api/dev');
   app.useGlobalFilters(new HttpExceptionFilter())
   app.useGlobalPipes(new ValidationPipe({whitelist: true, transform: true}))
 
@@ -31,7 +31,7 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api/dev/docs', app, document);
 
   const port = configService.get('APP_PORT') ?? 4001;
   await app.listen(port ?? 3000, '0.0.0.0');
