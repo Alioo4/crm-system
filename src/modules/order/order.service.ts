@@ -147,16 +147,12 @@ export class OrderService {
       if (status && status.trim().length > 2) {
         where.status = status;
       }
-    } else if(userStatus === 'ZAMIR') {
-      where.zamirId = filters.userId;
+    } else {
       where.status = userStatus;
-    } else if(userStatus === 'USTANOVCHIK') {
-      where.ustId = filters.userId;
-      where.status = userStatus;
-    } else if(userStatus === 'ZAVOD') {
-      where.zavodId = filters.userId;
-      where.status = userStatus;
-    } 
+      where.zamirId = null;
+      where.ustId = null;
+      where.zavodId = null;
+    }
 
     if (startDate || endDate) {
       where.createdAt = {};
@@ -411,7 +407,10 @@ export class OrderService {
       return new ResponseDto(true, 'Order updated successfully');
     } else {
       throw new BadRequestException(
-        new ResponseDto(false, 'You do not have permission to update this order'),
+        new ResponseDto(
+          false,
+          'You do not have permission to update this order',
+        ),
       );
     }
   }
@@ -446,10 +445,13 @@ export class OrderService {
     return new ResponseDto(true, 'Order deleted successfully');
   }
 
-  async getOrderByOrderId(orderId: string, userId: string, role: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
+  async assignOrders(orderIds: string[], userId: string, role: string) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        id: { in: orderIds },
+      },
       select: {
+        id: true,
         zamirId: true,
         ustId: true,
         zavodId: true,
@@ -457,45 +459,89 @@ export class OrderService {
       },
     });
 
-    if (!order) {
-      throw new NotFoundException(new ResponseDto(false, 'Order not found'));
+    if (orders.length === 0) {
+      throw new NotFoundException(new ResponseDto(false, 'Orders not found'));
     }
 
-    if (role === Status.ZAMIR && !order.zamirId) {
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: {
-          zamirId: userId,
-        },
-      });
-    } else if (role === Status.USTANOVCHIK && !order.ustId) {
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: {
-          ustId: userId,
-        },
-      });
-    } else if (role === Status.ZAVOD && !order.zavodId) {
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: {
-          zavodId: userId,
-        },
-      });
-    } else if (order.zavodId || order.ustId || order.zamirId) {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'This order is already assigned to another user',
-        ),
-      );
-    } else {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'You do not have permission to assign this order',
-        ),
-      );
+    const updatePromises: Promise<any>[] = [];
+
+    for (const order of orders) {
+      const { id, zamirId, ustId, zavodId } = order;
+
+      if (role === Status.ZAMIR && !zamirId) {
+        updatePromises.push(
+          this.prisma.order.update({
+            where: { id },
+            data: { zamirId: userId },
+          }),
+        );
+      } else if (role === Status.USTANOVCHIK && !ustId) {
+        updatePromises.push(
+          this.prisma.order.update({
+            where: { id },
+            data: { ustId: userId },
+          }),
+        );
+      } else if (role === Status.ZAVOD && !zavodId) {
+        updatePromises.push(
+          this.prisma.order.update({
+            where: { id },
+            data: { zavodId: userId },
+          }),
+        );
+      } else if (zamirId || ustId || zavodId) {
+        throw new BadRequestException(
+          new ResponseDto(
+            false,
+            `Order ${id} is already assigned to another user`,
+          ),
+        );
+      } else {
+        throw new BadRequestException(
+          new ResponseDto(
+            false,
+            `You do not have permission to assign order ${id}`,
+          ),
+        );
+      }
     }
+
+    await Promise.all(updatePromises);
+
+    return new ResponseDto(true, 'Orders successfully assigned');
+  }
+
+  async getMyOrders(
+    userId: string,
+    role: string,
+  ): Promise<IResponse> {
+    const where: any = {
+      OR: [
+        { zamirId: userId },
+        { ustId: userId },
+        { zavodId: userId },
+      ],
+    };
+
+    if (role === Role.ZAMIR) {
+      where.zamirId = userId;
+    } else if (role === Role.USTANOVCHIK) {
+      where.ustId = userId;
+    } else if (role === Role.ZAVOD) {
+      where.zavodId = userId;
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where,
+      include: {
+        region: true,
+        social: true,
+        orderStatus: true,
+        roomMeasurement: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return new ResponseDto(true, 'My orders found', orders);
   }
 }

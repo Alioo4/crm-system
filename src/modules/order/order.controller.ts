@@ -27,10 +27,12 @@ import {
   ApiParam,
   ApiExtraModels,
   ApiQuery,
+  ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { User } from 'src/common/decorators/get-user.decarator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { GetOrderFilterDto } from './dto/query.dto';
+import { GetOrdersDto } from './dto/get-orders';
 
 @ApiBearerAuth()
 @ApiTags('Order')
@@ -195,20 +197,39 @@ export class OrderController {
     return this.orderService.remove(id);
   }
 
-  @Get('get-order/:orderId')
-  @ApiOperation({ summary: 'Get order by orderId' })
+  @Post('assign-orders')
+  @ApiOperation({
+    summary: 'Assign current user to one or multiple orders by IDs',
+  })
   @ApiOkResponse({
-    description: 'Order found successfully',
+    description: 'Orders successfully assigned',
     type: ResponseOrderPosDto,
   })
   @ApiNotFoundResponse({
-    description: 'Order not found',
+    description: 'Some or all orders not found',
     type: ResponseOrderNegDto,
   })
-  getOrderByOrderId(
-    @Param('orderId', new ParseUUIDPipe()) orderId: string,
+  @ApiBadRequestResponse({
+    description: 'Assignment failed due to existing user or invalid role',
+    type: ResponseOrderNegDto,
+  })
+  async assignOrdersToUser(
+    @Body() dto: GetOrdersDto,
     @User() user: { sub: string; role: string },
   ) {
-    return this.orderService.getOrderByOrderId(orderId, user.sub, user.role);
+    return this.orderService.assignOrders(dto.orderIds, user.sub, user.role);
+  }
+
+  @Get('my-orders')
+  @Public()
+  @ApiOperation({ summary: 'Get orders assigned to the current user' })
+  @ApiOkResponse({
+    description: 'Orders assigned to the user successfully retrieved',
+    type: ResponseOrderPosDto,
+  })
+  getMyOrders(
+    @User() user: { sub: string; role: string },
+  ): Promise<IResponse> {
+    return this.orderService.getMyOrders(user.sub, user.role);
   }
 }
