@@ -55,7 +55,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const path = request.path;
     const method = request.method;
-    const pathRoute = path.split('/')[2];
+    const pathRoute = path.split('/')[3];
 
     const permission = await this.prisma.permissionAll.findFirst({
       where: {
