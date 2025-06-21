@@ -511,6 +511,70 @@ export class OrderService {
     return new ResponseDto(true, 'Orders successfully assigned');
   }
 
+  async unassignOrders(orderIds: string[], userId: string, role: string) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        id: { in: orderIds },
+      },
+      select: {
+        id: true,
+        zamirId: true,
+        ustId: true,
+        zavodId: true,
+        managerId: true,
+      },
+    });
+    if (orders.length === 0) {
+      throw new NotFoundException(new ResponseDto(false, 'Orders not found'));
+    }
+    const updatePromises: Promise<any>[] = [];
+    for (const order of orders) {
+      const { id, zamirId, ustId, zavodId } = order;
+      if (role === Status.ZAMIR && zamirId === userId) {
+        updatePromises.push(
+          this.prisma.order.update({
+            where: { id },
+            data: { zamirId: null },
+          }),
+      );
+      } else if (role === Status.USTANOVCHIK && ustId === userId) {
+        updatePromises.push(
+          this.prisma.order.update({
+            where: { id },
+            data: { ustId: null },      
+          }),
+      );
+      } else if (role === Status.ZAVOD && zavodId === userId) {
+        updatePromises.push(
+          this.prisma.order.update({
+            where: { id },
+            data: { zavodId: null },
+          }),
+      );
+      } else if (
+        (zamirId && zamirId !== userId) ||
+        (ustId && ustId !== userId) ||
+        (zavodId && zavodId !== userId)
+      ) {
+        throw new BadRequestException(
+          new ResponseDto(
+            false,
+            `Order ${id} is assigned to another user`,
+          ),
+        );
+      } else {
+        throw new BadRequestException(
+          new ResponseDto(
+            false,
+            `You do not have permission to unassign order ${id}`,
+          ),
+        );
+      }
+    }
+    await Promise.all(updatePromises);
+    return new ResponseDto(true, 'Orders successfully unassigned');
+  }
+
   async getMyOrders(
     userId: string,
     role: string,

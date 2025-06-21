@@ -142,9 +142,6 @@ export class OrderController {
   getMyOrders(
     @User() user: { sub: string; role: string },
   ): Promise<IResponse> {
-
-    console.log(user.sub);
-    
     return this.orderService.getMyOrders(user.sub, user.role);
   }
 
@@ -233,5 +230,28 @@ export class OrderController {
     @User() user: { sub: string; role: string },
   ) {
     return this.orderService.assignOrders(dto.orderIds, user.sub, user.role);
+  }
+
+  @Post('unassign-orders')
+  @ApiOperation({
+    summary: 'Unassign current user from one or multiple orders by IDs',
+  })
+  @ApiOkResponse({
+    description: 'Orders successfully unassigned',
+    type: ResponseOrderPosDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Some or all orders not found',
+    type: ResponseOrderNegDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Unassignment failed due to existing user or invalid role',
+    type: ResponseOrderNegDto,
+  })
+  async unassignOrdersFromUser(
+    @Body() dto: GetOrdersDto,
+    @User() user: { sub: string; role: string },
+  ) {
+    return this.orderService.unassignOrders(dto.orderIds, user.sub, user.role);
   }
 }
