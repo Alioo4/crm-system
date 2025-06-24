@@ -585,9 +585,9 @@ export class OrderService {
   ): Promise<IResponse> {
     const where: any = {
       OR: [
-        { zamirId: userId },
-        { ustId: userId },
-        { zavodId: userId },
+        { zamirId: userId, status: Status.ZAMIR },
+        { ustId: userId, status: Status.USTANOVCHIK },
+        { zavodId: userId, status: Status.ZAVOD },
       ],
     };
 
