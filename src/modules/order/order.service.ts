@@ -143,14 +143,18 @@ export class OrderService {
     if (socialId && isUUID(socialId)) {
       where.socialId = socialId;
     }
-    if (userStatus === 'ADMIN' || userStatus === 'MANAGER') {
+    if (userStatus === Role.ADMIN || userStatus === Role.MANAGER) {
       if (status && status.trim().length > 2) {
         where.status = status;
       }
-    } else {
+    } else if(userStatus === Role.ZAMIR) {
       where.status = userStatus;
       where.zamirId = null;
+    } else if(userStatus === Role.USTANOVCHIK) {
+      where.status = userStatus;
       where.ustId = null;
+    } else {
+      where.status = userStatus;
       where.zavodId = null;
     }
 
@@ -188,7 +192,7 @@ export class OrderService {
           orderStatus: true,
           roomMeasurement: true,
           currencyOrder: true,
-        },
+        }
       }),
       this.prisma.order.count({ where }),
     ]);
