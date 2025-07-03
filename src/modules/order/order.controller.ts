@@ -33,6 +33,7 @@ import { User } from 'src/common/decorators/get-user.decarator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { GetOrderFilterDto } from './dto/query.dto';
 import { GetOrdersDto } from './dto/get-orders';
+import { Role } from '@prisma/client';
 
 @ApiBearerAuth()
 @ApiTags('Order')
@@ -184,9 +185,9 @@ export class OrderController {
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateOrderDto: UpdateOrderDto,
-    @User() user: { sub: string; role: string },
+    @User() user: { sub: string; role: Role },
   ): Promise<IResponse> {
-    return this.orderService.update(id, updateOrderDto, user);
+    return this.orderService.update(id, updateOrderDto, { sub: user.sub, role: user.role });
   }
 
   @Delete(':id')
