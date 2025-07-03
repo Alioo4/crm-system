@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Status } from '@prisma/client';
 import {
   IsOptional,
   IsString,
@@ -7,15 +8,6 @@ import {
   IsEnum,
   IsNumber,
 } from 'class-validator';
-
-export enum Status {
-  MANAGER = 'MANAGER',
-  ZAMIR = 'ZAMIR',
-  ZAVOD = 'ZAVOD',
-  USTANOVCHIK = 'USTANOVCHIK',
-  DONE = 'DONE',
-  CANCEL = 'CANCEL',
-}
 
 export class UpdateOrderDto {
   @ApiPropertyOptional({ example: 'Jane Doe', maxLength: 128, required: false })
@@ -50,16 +42,6 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsUUID()
   orderStatusId?: string;
-
-  @ApiPropertyOptional({ example: '2025-04-01T10:00:00.000Z', required: false })
-  @IsOptional()
-  @IsDateString()
-  getAllPaymentDate?: Date;
-
-  @ApiPropertyOptional({ example: '2025-04-01T10:00:00.000Z', required: false })
-  @IsOptional()
-  @IsDateString()
-  getPrePaymentDate?: Date;
 
   @ApiPropertyOptional({
     example: Status.MANAGER,

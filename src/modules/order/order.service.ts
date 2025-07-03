@@ -147,10 +147,10 @@ export class OrderService {
       if (status && status.trim().length > 2) {
         where.status = status;
       }
-    } else if(userStatus === Role.ZAMIR) {
+    } else if (userStatus === Role.ZAMIR) {
       where.status = userStatus;
       where.zamirId = null;
-    } else if(userStatus === Role.USTANOVCHIK) {
+    } else if (userStatus === Role.USTANOVCHIK) {
       where.status = userStatus;
       where.ustId = null;
     } else {
@@ -192,7 +192,7 @@ export class OrderService {
           orderStatus: true,
           roomMeasurement: true,
           currencyOrder: true,
-        }
+        },
       }),
       this.prisma.order.count({ where }),
     ]);
@@ -224,200 +224,147 @@ export class OrderService {
   }
 
   async update(
-    id: string,
-    updateOrderDto: UpdateOrderDto,
-    { sub, role },
-  ): Promise<IResponse> {
-    const { status } = updateOrderDto;
+  id: string,
+  updateOrderDto: UpdateOrderDto,
+  { sub, role }: { sub: string; role: Role },
+): Promise<IResponse> {
+  const { status } = updateOrderDto;
+  let zamirDate: Date | undefined, doneDate: Date | undefined;
 
-    const findOrder = await this.prisma.order.findUnique({
+  const findOrder = await this.prisma.order.findUnique({ where: { id } });
+  if (!findOrder) {
+    throw new BadRequestException(new ResponseDto(false, 'Order not found'));
+  }
+
+  const canEdit =
+    ([Role.ADMIN, Role.MANAGER] as Role[]).includes(role) ||
+    [findOrder.zamirId, findOrder.ustId, findOrder.zavodId].includes(sub);
+
+  if (!canEdit) {
+    throw new BadRequestException(
+      new ResponseDto(false, 'You do not have permission to update this order'),
+    );
+  }
+
+  const user = await this.prisma.user.findUnique({
+    where: { id: sub },
+    select: { name: true, phone: true },
+  });
+
+  // 🔁 Role asosida tegishli ism/telefonni update qilish
+  const roleUpdateMap: Record<string, Partial<any>> = {
+    ZAMIR: { zamirName: user?.name || null, zamirPhone: user?.phone || null },
+    USTANOVCHIK: { ustName: user?.name || null, ustPhone: user?.phone || null },
+    ZAVOD: { zavodName: user?.name || null, zavodPhone: user?.phone || null },
+  };
+
+  if (roleUpdateMap[role]) {
+    await this.prisma.order.update({
       where: { id },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        comment: true,
-        endDateJob: true,
-        workerArrivalDate: true,
-        total: true,
-        prePayment: true,
-        dueAmount: true,
-        regionId: true,
-        longitude: true,
-        latitude: true,
-        socialId: true,
-        status: true,
-        managerName: true,
-        managerphone: true,
-        zamirId: true,
-        zamirName: true,
-        zamirPhone: true,
-        ustId: true,
-        ustName: true,
-        ustPhone: true,
-        zavodId: true,
-        zavodName: true,
-        zavodPhone: true,
-        getAllPaymentDate: true,
-        getPrePaymentDate: true,
-      },
+      data: roleUpdateMap[role],
+    });
+  }
+
+  if (status === Status.ZAVOD) zamirDate = new Date();
+  if (status === Status.DONE) doneDate = new Date();
+
+  if (status && ([Status.ZAVOD, Status.USTANOVCHIK, Status.DONE] as Status[]).includes(status)) {
+    await this.history.create({
+      name: findOrder.name ?? undefined,
+      phone: findOrder.phone ?? undefined,
+      comment: findOrder.comment ?? undefined,
+      endDateJob: findOrder.endDateJob ?? undefined,
+      workerArrivalDate: findOrder.workerArrivalDate ?? undefined,
+      orderId: findOrder.id,
+      total: findOrder.total ?? undefined,
+      prePayment: findOrder.prePayment ?? undefined,
+      dueAmount: findOrder.dueAmount ?? undefined,
+      regionId: findOrder.regionId ?? '',
+      longitude: findOrder.longitude ?? undefined,
+      latitude: findOrder.latitude ?? undefined,
+      socialId: findOrder.socialId ?? '',
+      status: findOrder.status
+    });
+  }
+
+  const updatedOrder = await this.prisma.order.update({
+    where: { id },
+    data: {
+      ...updateOrderDto,
+      getPrePaymentDate: zamirDate ?? findOrder.getPrePaymentDate,
+      getAllPaymentDate: doneDate ?? findOrder.getAllPaymentDate,
+      orderStatusId:
+        status === Status.ZAMIR ? null : updateOrderDto.orderStatusId,
+    },
+    include: { region: true },
+  });
+
+  // 🔁 Telegram yuborish funksiyasi
+  const sendTelegram = async (type: 'new' | 'changed' | 'done') => {
+    const rooms = await this.prisma.roomMeasurement.findMany({
+      where: { orderId: id },
+      select: { name: true, key: true, value: true },
     });
 
-    if (!findOrder) {
-      throw new BadRequestException(new ResponseDto(false, 'Order not found'));
-    }
+    const data = {
+      name: updatedOrder.name || 'name',
+      phone: updatedOrder.phone || 'phone',
+      comment: updatedOrder.comment || '',
+      regionName: updatedOrder.region?.name || 'default',
+      lon: updatedOrder.longitude || 0,
+      lat: updatedOrder.latitude || 0,
+      workerArriveDate: updatedOrder.workerArrivalDate?.toString() || '',
+      endedjobDate: updatedOrder.endDateJob?.toString() || '',
+      rooms: rooms.map((room) => ({
+        name: room.name || '',
+        key: room.key || '',
+        value: room.value || '',
+      })),
+    };
 
-    if (
-      role === Role.ADMIN ||
-      role === Role.MANAGER ||
-      findOrder.zamirId === sub ||
-      findOrder.ustId === sub ||
-      findOrder.zavodId === sub
-    ) {
-      const findUseer = await this.prisma.user.findUnique({
-        where: { id: sub },
-        select: {
-          name: true,
-          phone: true,
-        },
-      });
+    if (type === 'new') generateTelegramMessage(data);
+    else if (type === 'changed') sendTelegramOrderChange(data);
+    else if (type === 'done') sendTelegramOrderDone(data);
+  };
 
-      if (role === 'ZAMIR') {
-        await this.prisma.order.update({
-          where: { id },
-          data: {
-            zamirName: findUseer?.name || null,
-            zamirPhone: findUseer?.phone || null,
-          },
-        });
-      } else if (role === 'USTANOVCHIK') {
-        await this.prisma.order.update({
-          where: { id },
-          data: {
-            ustName: findUseer?.name || null,
-            ustPhone: findUseer?.phone || null,
-          },
-        });
-      } else if (role === 'ZAVOD') {
-        await this.prisma.order.update({
-          where: { id },
-          data: {
-            zavodName: findUseer?.name || null,
-            zavodPhone: findUseer?.phone || null,
-          },
-        });
-      }
+  // 🔁 Telegram qaysi turda ketadi
+  if (findOrder.status === Status.ZAMIR && status === Status.ZAVOD) {
+    await sendTelegram('new');
+  } else if (
+    !status ||
+    (findOrder.status === Status.ZAVOD && status === Status.ZAVOD)
+  ) {
+    await sendTelegram('changed');
+  } else if (status === Status.DONE) {
+    const existingHistory = await this.prisma.history.findFirst({
+      where: { orderId: id },
+      select: { id: true },
+    });
 
-      const history: any = {
-        name: findOrder.name,
-        phone: findOrder.phone,
-        comment: findOrder.comment,
-        endDateJob: findOrder.endDateJob,
-        workerArrivalDate: findOrder.workerArrivalDate,
-        orderId: findOrder.id,
-        total: findOrder.total,
-        prePayment: findOrder.prePayment,
-        dueAmount: findOrder.dueAmount,
-        regionId: findOrder.regionId,
-        longitude: findOrder.longitude,
-        latitude: findOrder.latitude,
-        socialId: findOrder.socialId,
-        status: findOrder.status,
-        getAllPaymentDate: findOrder.getAllPaymentDate,
-        getPrePaymentDate: findOrder.getPrePaymentDate,
-      };
-
-      if (
-        status === Status.ZAVOD ||
-        status === Status.USTANOVCHIK ||
-        status === Status.DONE
-      ) {
-        await this.history.create(history);
-      }
-
-      const changeOrder = await this.prisma.order.update({
-        where: { id },
+    if (existingHistory) {
+      await this.prisma.history.update({
+        where: { id: existingHistory.id },
         data: {
-          ...updateOrderDto,
-          orderStatusId:
-            status === Status.ZAMIR ? null : updateOrderDto.orderStatusId,
-        },
-        include: {
-          region: true,
+          managerName: findOrder.managerName,
+          managerphone: findOrder.managerphone,
+          zamirName: findOrder.zamirName,
+          zamirPhone: findOrder.zamirPhone,
+          ustName: findOrder.ustName,
+          ustPhone: findOrder.ustPhone,
+          zavodName: findOrder.zavodName,
+          zavodPhone: findOrder.zavodPhone,
+          getAllPaymentDate: findOrder.getAllPaymentDate,
+          getPrePaymentDate: findOrder.getPrePaymentDate,
         },
       });
-
-      const sendTelegram = async (type: 'new' | 'changed' | 'done') => {
-        const rooms = await this.prisma.roomMeasurement.findMany({
-          where: { orderId: id },
-          select: { name: true, key: true, value: true },
-        });
-
-        const data = {
-          name: changeOrder.name || 'name',
-          phone: changeOrder.phone || 'phone',
-          comment: changeOrder.comment || '',
-          regionName: changeOrder.region?.name || 'default',
-          lon: changeOrder.longitude || 0,
-          lat: changeOrder.latitude || 0,
-          workerArriveDate: changeOrder.workerArrivalDate?.toString() || '',
-          endedjobDate: changeOrder.endDateJob?.toString() || '',
-          rooms: rooms.map((room) => ({
-            name: room.name || '',
-            key: room.key || '',
-            value: room.value || '',
-          })),
-        };
-
-        if (type === 'new') generateTelegramMessage(data);
-        else if (type === 'changed') sendTelegramOrderChange(data);
-        else if (type === 'done') sendTelegramOrderDone(data);
-      };
-
-      if (findOrder.status === Status.ZAMIR && status === Status.ZAVOD) {
-        await sendTelegram('new');
-      } else if (
-        !status ||
-        (findOrder.status === Status.ZAVOD && status === Status.ZAVOD)
-      ) {
-        await sendTelegram('changed');
-      } else if (status === Status.DONE) {
-        const findHistory = await this.prisma.history.findFirst({
-          where: { orderId: id },
-          select: { id: true },
-        });
-
-        if (findHistory) {
-          await this.prisma.history.update({
-            where: { id: findHistory.id },
-            data: {
-              managerName: findOrder.managerName,
-              managerphone: findOrder.managerphone,
-              zamirName: findOrder.zamirName,
-              zamirPhone: findOrder.zamirPhone,
-              ustName: findOrder.ustName,
-              ustPhone: findOrder.ustPhone,
-              zavodName: findOrder.zavodName,
-              zavodPhone: findOrder.zavodPhone,
-              getAllPaymentDate: findOrder.getAllPaymentDate,
-              getPrePaymentDate: findOrder.getPrePaymentDate,
-            },
-          });
-        }
-
-        await sendTelegram('done');
-      }
-
-      return new ResponseDto(true, 'Order updated successfully');
-    } else {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'You do not have permission to update this order',
-        ),
-      );
     }
+
+    await sendTelegram('done');
   }
+
+  return new ResponseDto(true, 'Order updated successfully');
+}
+
 
   async remove(id: string): Promise<IResponse> {
     const findOrder = await this.prisma.order.findUnique({
@@ -540,31 +487,28 @@ export class OrderService {
             where: { id },
             data: { zamirId: null },
           }),
-      );
+        );
       } else if (role === Status.USTANOVCHIK && ustId === userId) {
         updatePromises.push(
           this.prisma.order.update({
             where: { id },
-            data: { ustId: null },      
+            data: { ustId: null },
           }),
-      );
+        );
       } else if (role === Status.ZAVOD && zavodId === userId) {
         updatePromises.push(
           this.prisma.order.update({
             where: { id },
             data: { zavodId: null },
           }),
-      );
+        );
       } else if (
         (zamirId && zamirId !== userId) ||
         (ustId && ustId !== userId) ||
         (zavodId && zavodId !== userId)
       ) {
         throw new BadRequestException(
-          new ResponseDto(
-            false,
-            `Order ${id} is assigned to another user`,
-          ),
+          new ResponseDto(false, `Order ${id} is assigned to another user`),
         );
       } else {
         throw new BadRequestException(
@@ -579,10 +523,7 @@ export class OrderService {
     return new ResponseDto(true, 'Orders successfully unassigned');
   }
 
-  async getMyOrders(
-    userId: string,
-    role: string,
-  ): Promise<IResponse> {
+  async getMyOrders(userId: string, role: string): Promise<IResponse> {
     const where: any = {
       OR: [
         { zamirId: userId, status: Status.ZAMIR },
