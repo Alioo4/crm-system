@@ -31,7 +31,7 @@ export class UpdateOrderDto {
     required: false,
   })
   @IsOptional()
-  socialId?: string;
+  socialId?: string | null;
 
   @ApiPropertyOptional({ example: '2025-04-01T10:00:00.000Z', required: false })
   @IsOptional()
@@ -41,7 +41,7 @@ export class UpdateOrderDto {
   @ApiPropertyOptional({ example: '8f5a945a-4c62-437e-95f2-bd45a44d12a7', required: false })
   @IsOptional()
   @IsUUID()
-  orderStatusId?: string;
+  orderStatusId?: string | null;
 
   @ApiPropertyOptional({
     example: Status.MANAGER,
@@ -83,7 +83,7 @@ export class UpdateOrderDto {
     required: false,
   })
   @IsOptional()
-  regionId?: string;
+  regionId?: string | null;
 
   @ApiPropertyOptional({ description: 'Longitude', example: 69.2401 })
   @IsNumber()

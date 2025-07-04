@@ -251,7 +251,6 @@ export class OrderService {
     select: { name: true, phone: true },
   });
 
-  // 🔁 Role asosida tegishli ism/telefonni update qilish
   const roleUpdateMap: Record<string, Partial<any>> = {
     ZAMIR: { zamirName: user?.name || null, zamirPhone: user?.phone || null },
     USTANOVCHIK: { ustName: user?.name || null, ustPhone: user?.phone || null },
@@ -279,10 +278,10 @@ export class OrderService {
       total: findOrder.total ?? undefined,
       prePayment: findOrder.prePayment ?? undefined,
       dueAmount: findOrder.dueAmount ?? undefined,
-      regionId: findOrder.regionId ?? '',
+      regionId: findOrder.regionId ?? null,
       longitude: findOrder.longitude ?? undefined,
       latitude: findOrder.latitude ?? undefined,
-      socialId: findOrder.socialId ?? '',
+      socialId: findOrder.socialId ?? null,
       status: findOrder.status
     });
   }

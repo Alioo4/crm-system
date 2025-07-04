@@ -72,7 +72,7 @@ export class CreateHistoryDto {
     description: 'Hudud ID si',
   })
   @IsUUID()
-  regionId: string;
+  regionId: string | null;
 
   @ApiProperty({
     example: 69.2163,
@@ -95,5 +95,5 @@ export class CreateHistoryDto {
     description: 'Ijtimoiy tarmoq ID si',
   })
   @IsUUID()
-  socialId: string;
+  socialId: string | null;
 }
