@@ -264,8 +264,8 @@ export class OrderService {
     });
   }
 
-  if (status === Status.ZAVOD) zamirDate = new Date();
-  if (status === Status.DONE) doneDate = new Date();
+  if (status === Status.ZAVOD) zamirDate = new Date(Date.now() + 5 * 60 * 60 * 1000);
+  if (status === Status.DONE) doneDate = new Date(Date.now() + 5 * 60 * 60 * 1000);
 
   if (status && ([Status.ZAVOD, Status.USTANOVCHIK, Status.DONE] as Status[]).includes(status)) {
     await this.history.create({
