@@ -12,6 +12,7 @@ import { Role, Status } from '@prisma/client';
 import { isUUID } from 'src/common/types/isUuid';
 import {
   generateTelegramMessage,
+  sendMessageTelegram,
   sendTelegramOrderChange,
   sendTelegramOrderDone,
 } from 'src/common/utils/send-telegram.bot';
@@ -188,6 +189,8 @@ export class OrderService {
       const date = new Date(workerArrivalDate);
       if (!isNaN(date.getTime())) where.workerArrivalDate = { gte: date };
     }
+
+    await sendMessageTelegram(where)
 
     const [orders, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({

@@ -80,7 +80,7 @@ export function sendTelegramOrderDone(data: OrderTelegramData): Promise<void> {
   return sendMessageTelegram(message);
 }
 
-async function sendMessageTelegram(message: string): Promise<void> {
+export async function sendMessageTelegram(message: string): Promise<void> {
   const botToken = configService.get<string>('TELEGRAM_BOT_TOKEN');
   const chatId = configService.get<string>('TELEGRAM_CHAT_ID');
 
