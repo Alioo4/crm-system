@@ -148,13 +148,13 @@ export class OrderService {
         where.status = status;
       }
     } else if(userStatus === 'ZAMIR') {
-      where.zamirId = filters.userId;
+      // where.zamirId = filters.userId;
       where.status = userStatus;
     } else if(userStatus === 'USTANOVCHIK') {
-      where.ustId = filters.userId;
+      // where.ustId = filters.userId;
       where.status = userStatus;
     } else if(userStatus === 'ZAVOD') {
-      where.zavodId = filters.userId;
+      // where.zavodId = filters.userId;
       where.status = userStatus;
     } 
 
@@ -270,9 +270,9 @@ export class OrderService {
     if (
       role === Role.ADMIN ||
       role === Role.MANAGER ||
-      findOrder.zamirId === sub ||
-      findOrder.ustId === sub ||
-      findOrder.zavodId === sub
+      (findOrder.status === Status.ZAMIR && role === Status.ZAMIR) ||
+      (findOrder.status === Status.USTANOVCHIK && role === Status.USTANOVCHIK) ||
+      (findOrder.status === Status.ZAVOD && role === Status.ZAVOD)
     ) {
       const findUseer = await this.prisma.user.findUnique({
         where: { id: sub },
@@ -288,6 +288,7 @@ export class OrderService {
           data: {
             zamirName: findUseer?.name || null,
             zamirPhone: findUseer?.phone || null,
+            zamirId: sub,
           },
         });
       } else if (role === 'USTANOVCHIK') {
@@ -296,6 +297,7 @@ export class OrderService {
           data: {
             ustName: findUseer?.name || null,
             ustPhone: findUseer?.phone || null,
+            ustId: sub,
           },
         });
       } else if (role === 'ZAVOD') {
@@ -304,6 +306,7 @@ export class OrderService {
           data: {
             zavodName: findUseer?.name || null,
             zavodPhone: findUseer?.phone || null,
+            zavodId: sub,
           },
         });
       }
