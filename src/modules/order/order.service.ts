@@ -147,16 +147,25 @@ export class OrderService {
       if (status && status.trim().length > 2) {
         where.status = status;
       }
-    } else if(userStatus === 'ZAMIR') {
-      // where.zamirId = filters.userId;
-      where.status = userStatus;
-    } else if(userStatus === 'USTANOVCHIK') {
-      // where.ustId = filters.userId;
-      where.status = userStatus;
-    } else if(userStatus === 'ZAVOD') {
-      // where.zavodId = filters.userId;
-      where.status = userStatus;
-    } 
+    } else if (userStatus === 'ZAMIR') {
+      where.status = Status.ZAMIR;
+      where.OR = [
+        { zamirId: filters.userId },
+        { zamirId: null },   
+      ];
+    } else if (userStatus === 'USTANOVCHIK') {
+      where.status = Status.USTANOVCHIK;
+      where.OR = [
+        { ustId: filters.userId },
+        { ustId: null },
+      ];
+    } else if (userStatus === 'ZAVOD') {
+      where.status = Status.ZAVOD;
+      where.OR = [
+        { zavodId: filters.userId },
+        { zavodId: null },
+      ];
+    }
 
     if (startDate || endDate) {
       where.createdAt = {};
