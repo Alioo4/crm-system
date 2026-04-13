@@ -1,38 +1,20 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:15
-    networks:
-      - my_custom_network
-    restart: always
+    image: postgres:16
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234
-      POSTGRES_DB: crm
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-1234}
+      POSTGRES_DB: ${DB_NAME:-crm}
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
-  app:
-    image: node:20
-    networks:
-      - my_custom_network
-    working_dir: /app
-    volumes:
-      - .:/app
-    ports:
-      - '3000:3000'
-    environment:
-      DATABASE_URL: 'postgresql://postgres:1234@postgres:5432/crm'
-    command: sh -c "npm install && npx prisma generate && npx prisma db push && npm run start"
-    depends_on:
-      - postgres
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
-
-networks:
-  my_custom_network:
-    driver: bridge
