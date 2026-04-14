@@ -127,10 +127,14 @@ export class OrderService {
     const where: any = {};
 
     if (typeof search === 'string' && search.trim().length > 2) {
-      where.OR = [
-        { phone: { contains: search, mode: 'insensitive' } },
-        { name: { contains: search, mode: 'insensitive' } },
-        { region: { name: { contains: search, mode: 'insensitive' } } },
+      where.AND = [
+        {
+          OR: [
+            { phone: { contains: search, mode: 'insensitive' } },
+            { name: { contains: search, mode: 'insensitive' } },
+            { region: { name: { contains: search, mode: 'insensitive' } } },
+          ],
+        },
       ];
     }
 
