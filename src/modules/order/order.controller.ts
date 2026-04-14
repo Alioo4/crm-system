@@ -27,10 +27,12 @@ import {
   ApiParam,
   ApiExtraModels,
   ApiQuery,
+  ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { User } from 'src/common/decorators/get-user.decarator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { GetOrderFilterDto } from './dto/query.dto';
+import { GetOrdersDto } from './dto/get-orders.dto';
 
 @ApiBearerAuth()
 @ApiTags('Order')
@@ -210,5 +212,63 @@ export class OrderController {
     @User() user: { sub: string; role: string },
   ) {
     return this.orderService.getOrderByOrderId(orderId, user.sub, user.role);
+  }
+
+  @Get('my-orders')
+  @ApiOperation({ summary: 'Get orders assigned to the current user' })
+  @ApiOkResponse({
+    description: 'Orders assigned to the user successfully retrieved',
+    type: ResponseOrderPosDto,
+  })
+  getMyOrders(
+    @User() user: { sub: string; role: string },
+  ): Promise<IResponse> {
+    return this.orderService.getMyOrders(user.sub, user.role);
+  }
+
+  @Post('assign-orders')
+  @ApiOperation({
+    summary: 'Assign current user to one or multiple orders by IDs',
+  })
+  @ApiOkResponse({
+    description: 'Orders successfully assigned',
+    type: ResponseOrderPosDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Some or all orders not found',
+    type: ResponseOrderNegDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Assignment failed due to existing user or invalid role',
+    type: ResponseOrderNegDto,
+  })
+  async assignOrdersToUser(
+    @Body() dto: GetOrdersDto,
+    @User() user: { sub: string; role: string },
+  ) {
+    return this.orderService.assignOrders(dto.orderIds, user.sub, user.role);
+  }
+
+  @Post('unassign-orders')
+  @ApiOperation({
+    summary: 'Unassign current user from one or multiple orders by IDs',
+  })
+  @ApiOkResponse({
+    description: 'Orders successfully unassigned',
+    type: ResponseOrderPosDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Some or all orders not found',
+    type: ResponseOrderNegDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Unassignment failed due to existing user or invalid role',
+    type: ResponseOrderNegDto,
+  })
+  async unassignOrdersFromUser(
+    @Body() dto: GetOrdersDto,
+    @User() user: { sub: string; role: string },
+  ) {
+    return this.orderService.unassignOrders(dto.orderIds, user.sub, user.role);
   }
 }
