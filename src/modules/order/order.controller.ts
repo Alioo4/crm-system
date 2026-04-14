@@ -133,6 +133,18 @@ export class OrderController {
     });
   }
 
+  @Get('my-orders')
+  @ApiOperation({ summary: 'Get orders assigned to the current user' })
+  @ApiOkResponse({
+    description: 'Orders assigned to the user successfully retrieved',
+    type: ResponseOrderPosDto,
+  })
+  getMyOrders(
+    @User() user: { sub: string; role: string },
+  ): Promise<IResponse> {
+    return this.orderService.getMyOrders(user.sub, user.role);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single order by ID' })
   @ApiOkResponse({
@@ -212,18 +224,6 @@ export class OrderController {
     @User() user: { sub: string; role: string },
   ) {
     return this.orderService.getOrderByOrderId(orderId, user.sub, user.role);
-  }
-
-  @Get('my-orders')
-  @ApiOperation({ summary: 'Get orders assigned to the current user' })
-  @ApiOkResponse({
-    description: 'Orders assigned to the user successfully retrieved',
-    type: ResponseOrderPosDto,
-  })
-  getMyOrders(
-    @User() user: { sub: string; role: string },
-  ): Promise<IResponse> {
-    return this.orderService.getMyOrders(user.sub, user.role);
   }
 
   @Post('assign-orders')
