@@ -274,9 +274,9 @@ export class OrderService {
     if (
       role === Role.ADMIN ||
       role === Role.MANAGER ||
-      (findOrder.status === Status.ZAMIR && role === Status.ZAMIR) ||
-      (findOrder.status === Status.USTANOVCHIK && role === Status.USTANOVCHIK) ||
-      (findOrder.status === Status.ZAVOD && role === Status.ZAVOD)
+      findOrder.zamirId === sub ||
+      findOrder.ustId === sub ||
+      findOrder.zavodId === sub
     ) {
       const findUseer = await this.prisma.user.findUnique({
         where: { id: sub },
@@ -292,7 +292,6 @@ export class OrderService {
           data: {
             zamirName: findUseer?.name || null,
             zamirPhone: findUseer?.phone || null,
-            zamirId: sub,
           },
         });
       } else if (role === 'USTANOVCHIK') {
@@ -301,7 +300,6 @@ export class OrderService {
           data: {
             ustName: findUseer?.name || null,
             ustPhone: findUseer?.phone || null,
-            ustId: sub,
           },
         });
       } else if (role === 'ZAVOD') {
@@ -310,7 +308,6 @@ export class OrderService {
           data: {
             zavodName: findUseer?.name || null,
             zavodPhone: findUseer?.phone || null,
-            zavodId: sub,
           },
         });
       }

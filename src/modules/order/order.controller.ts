@@ -30,7 +30,6 @@ import {
   ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { User } from 'src/common/decorators/get-user.decarator';
-import { Public } from 'src/common/decorators/public.decorator';
 import { GetOrderFilterDto } from './dto/query.dto';
 import { GetOrdersDto } from './dto/get-orders.dto';
 
