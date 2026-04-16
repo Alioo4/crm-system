@@ -11,7 +11,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   app.enableCors();
-  app.setGlobalPrefix('api/dev');
+  app.setGlobalPrefix('api');
   app.useGlobalFilters(new HttpExceptionFilter())
   app.useGlobalPipes(new ValidationPipe({whitelist: true, transform: true}))
 
