@@ -13,9 +13,7 @@ export class StatisticsService {
       throw new ForbiddenException('Permission denied');
     }
 
-    const where: any = {
-      status: query.status ?? 'DONE',
-    };
+    const where: any = {};
 
     const search = query.search?.trim();
     if (search) where.OR = this.buildSearchFilters(search);
