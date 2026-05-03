@@ -251,6 +251,7 @@ export class OrderService {
         latitude: true,
         socialId: true,
         status: true,
+        managerId: true,
         managerName: true,
         managerphone: true,
         zamirId: true,
@@ -327,6 +328,10 @@ export class OrderService {
         latitude: findOrder.latitude,
         socialId: findOrder.socialId,
         status: findOrder.status,
+        managerId: findOrder.managerId,
+        zamirId: findOrder.zamirId,
+        zavodId: findOrder.zavodId,
+        ustId: findOrder.ustId,
         getAllPaymentDate: findOrder.getAllPaymentDate,
         getPrePaymentDate: findOrder.getPrePaymentDate,
       };
