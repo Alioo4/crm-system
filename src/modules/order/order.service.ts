@@ -13,7 +13,9 @@ import { isUUID } from 'src/common/types/isUuid';
 import {
   generateTelegramMessage,
   sendTelegramOrderChange,
+  sendTelegramOrderDeleted,
   sendTelegramOrderDone,
+  sendTelegramOrderForReport,
 } from 'src/common/utils/send-telegram.bot';
 
 @Injectable()
@@ -321,8 +323,12 @@ export class OrderService {
         workerArrivalDate: findOrder.workerArrivalDate,
         orderId: findOrder.id,
         total: updateOrderDto.total ? updateOrderDto.total : findOrder.total,
-        prePayment: updateOrderDto.prePayment ? updateOrderDto.prePayment : findOrder.prePayment,
-        dueAmount: updateOrderDto.dueAmount ? updateOrderDto.dueAmount : findOrder.dueAmount,
+        prePayment: updateOrderDto.prePayment
+          ? updateOrderDto.prePayment
+          : findOrder.prePayment,
+        dueAmount: updateOrderDto.dueAmount
+          ? updateOrderDto.dueAmount
+          : findOrder.dueAmount,
         regionId: findOrder.regionId,
         longitude: findOrder.longitude,
         latitude: findOrder.latitude,
@@ -353,6 +359,10 @@ export class OrderService {
         },
         include: {
           region: true,
+          social: true,
+          orderStatus: true,
+          roomMeasurement: true,
+          currencyOrder: true,
         },
       });
 
@@ -384,7 +394,10 @@ export class OrderService {
       };
 
       if (findOrder.status === Status.ZAMIR && status === Status.ZAVOD) {
-        await sendTelegram('new');
+        await Promise.all([
+          sendTelegramOrderForReport(changeOrder),
+          sendTelegram('new'),
+        ]);
       } else if (
         !status ||
         (findOrder.status === Status.ZAVOD && status === Status.ZAVOD)
@@ -420,17 +433,26 @@ export class OrderService {
       return new ResponseDto(true, 'Order updated successfully');
     } else {
       throw new BadRequestException(
-        new ResponseDto(false, 'You do not have permission to update this order'),
+        new ResponseDto(
+          false,
+          'You do not have permission to update this order',
+        ),
       );
     }
   }
 
-  async remove(id: string): Promise<IResponse> {
-    const findOrder = await this.prisma.order.findUnique({
-      where: { id },
-    });
+  async remove(id: string, userId: string): Promise<IResponse> {
+    const [findOrder, user] = await Promise.all([
+      this.prisma.order.findUnique({
+        where: { id },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, phone: true },
+      }),
+    ]);
 
-    if (!findOrder) {
+    if (!findOrder || !user) {
       throw new BadRequestException(new ResponseDto(false, 'Order not found'));
     }
 
@@ -448,9 +470,16 @@ export class OrderService {
       });
     }
 
-    await this.prisma.order.delete({
-      where: { id },
-    });
+    await Promise.all([
+      this.prisma.order.delete({
+        where: { id },
+      }),
+      sendTelegramOrderDeleted(findOrder, {
+        id: userId,
+        name: user.name,
+        phone: user.phone,
+      }),
+    ]);
 
     return new ResponseDto(true, 'Order deleted successfully');
   }

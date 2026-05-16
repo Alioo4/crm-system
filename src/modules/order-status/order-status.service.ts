@@ -3,7 +3,6 @@ import { CreateOrderStatusDto } from './dto/create-order-status.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { IResponse, ResponseDto } from 'src/common/types';
-import { deletedOrderSendBot } from 'src/common/utils/send-telegram.bot';
 
 @Injectable()
 export class OrderStatusService {
@@ -104,16 +103,8 @@ export class OrderStatusService {
         },
       });
     }
-    const data = {
-      name: '',
-      phone: '',
-      item: '',
-      itemName: '',
-      itemPhone: '',
-    };
 
     await this.prisma.orderStatus.delete({ where: { id } });
-    // deletedOrderSendBot()
     return new ResponseDto(true, 'Successfully deleted status!!!');
   }
 }

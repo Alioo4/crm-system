@@ -204,8 +204,8 @@ export class OrderController {
     format: 'uuid',
     description: 'Order ID',
   })
-  remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<IResponse> {
-    return this.orderService.remove(id);
+  remove(@Param('id', new ParseUUIDPipe()) id: string, @User() user: { sub: string; role: string }): Promise<IResponse> {
+    return this.orderService.remove(id, user.sub);
   }
 
   @Get('get-order/:orderId')
