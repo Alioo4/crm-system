@@ -13,7 +13,9 @@ export class StatisticsService {
       throw new ForbiddenException('Permission denied');
     }
 
-    const where: any = {};
+    const where: any = {
+      status: query.status ?? 'DONE',
+    };
 
     const search = query.search?.trim();
     if (search) where.OR = this.buildSearchFilters(search);
@@ -94,7 +96,7 @@ export class StatisticsService {
 
   private buildDateFilter(startDate?: string, endDate?: string) {
     if (!startDate && !endDate) return null;
-  
+
     const getUtcDate = (dateStr: string, endOfDay = false) => {
       const date = new Date(dateStr);
       if (endOfDay) {
@@ -104,18 +106,18 @@ export class StatisticsService {
       }
       return date;
     };
-  
+
     const start = startDate ? getUtcDate(startDate) : undefined;
     const end = endDate ? getUtcDate(endDate, true) : undefined;
-  
+
     if (start && end && start.toDateString() === end.toDateString()) {
       return { gte: start, lte: end };
     }
-  
+
     const range: any = {};
     if (start) range.gte = start;
     if (end) range.lte = end;
-  
+
     return range;
-  } 
+  }
 }
