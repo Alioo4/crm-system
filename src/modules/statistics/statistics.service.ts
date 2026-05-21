@@ -11,74 +11,79 @@ export class StatisticsService {
     if (role !== 'ADMIN') {
       throw new ForbiddenException('Permission denied');
     }
-
+  
     const where: any = {};
-
     const dateFilter = this.buildDateFilter(query.startDate, query.endDate);
-
+  
     if (dateFilter) {
       where.OR = [
-        {
-          getPrePaymentDate: dateFilter,
-        },
-        {
-          getAllPaymentDate: dateFilter,
-        },
+        { getPrePaymentDate: dateFilter },
+        { getAllPaymentDate: dateFilter },
       ];
     }
-
+  
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
     const skip = (page - 1) * limit;
-
-    const [orders, totalOrders, totalAmount] = await Promise.all([
-      this.prisma.order.findMany({
-        where,
-        include: {
-          region: true,
-          social: true,
-          orderStatus: true,
-          roomMeasurement: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        skip,
-        take: limit,
-      }),
-
-      this.prisma.order.count({
-        where,
-      }),
-
-      this.prisma.order.aggregate({
-        where,
-        _sum: {
-          total: true,
-          prePayment: true,
-          dueAmount: true,
-        },
-      }),
-    ]);
-
+  
+    // Income uchun barcha orderlarni olish (pagination siz)
+    const [paginatedOrders, totalOrders, totalAmount, allOrdersForIncome] =
+      await Promise.all([
+        this.prisma.order.findMany({
+          where,
+          include: {
+            region: true,
+            social: true,
+            orderStatus: true,
+            roomMeasurement: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+  
+        this.prisma.order.count({ where }),
+  
+        this.prisma.order.aggregate({
+          where,
+          _sum: {
+            total: true,
+            prePayment: true,
+            dueAmount: true,
+          },
+        }),
+  
+        // Faqat income hisoblash uchun — minimal field lar
+        this.prisma.order.findMany({
+          where,
+          select: {
+            getPrePaymentDate: true,
+            getAllPaymentDate: true,
+            prePayment: true,
+            total: true,
+          },
+        }),
+      ]);
+  
+    // Income to'g'ri hisoblash — BARCHA orderlar bo'yicha
     let income = 0;
-
-    for (const order of orders) {
+  
+    for (const order of allOrdersForIncome) {
       const prePaymentDate = order.getPrePaymentDate
         ? new Date(order.getPrePaymentDate)
         : null;
-
+  
       const allPaymentDate = order.getAllPaymentDate
         ? new Date(order.getAllPaymentDate)
         : null;
-
+  
       if (
         prePaymentDate &&
         this.isDateInRange(prePaymentDate, query.startDate, query.endDate)
       ) {
         income += Number(order.prePayment || 0);
       }
-
+  
       if (
         allPaymentDate &&
         this.isDateInRange(allPaymentDate, query.startDate, query.endDate)
@@ -86,7 +91,7 @@ export class StatisticsService {
         income += Number(order.total || 0) - Number(order.prePayment || 0);
       }
     }
-
+  
     return new ResponseDto(
       true,
       'Successfully found!',
@@ -96,7 +101,7 @@ export class StatisticsService {
         totalPrePayment: totalAmount._sum.prePayment || 0,
         totalDueAmount: totalAmount._sum.dueAmount || 0,
         totalOrders,
-        orders,
+        orders: paginatedOrders,
       },
       {
         total: totalOrders,
@@ -105,25 +110,6 @@ export class StatisticsService {
         totalPages: Math.ceil(totalOrders / limit),
       },
     );
-  }
-
-  private buildSearchFilters(search: string) {
-    const fields = [
-      'managerName',
-      'managerphone',
-      'zamirName',
-      'zamirPhone',
-      'zavodName',
-      'zavodPhone',
-      'ustName',
-      'ustPhone',
-      'name',
-      'phone',
-    ];
-
-    return fields.map((field) => ({
-      [field]: { contains: search, mode: 'insensitive' },
-    }));
   }
 
   private buildDateFilter(startDate?: string, endDate?: string) {
