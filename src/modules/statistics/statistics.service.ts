@@ -2,7 +2,6 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatisticsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
-import { Status } from '@prisma/client';
 
 @Injectable()
 export class StatisticsService {
@@ -13,19 +12,19 @@ export class StatisticsService {
       throw new ForbiddenException('Permission denied');
     }
 
-    const where: any = {
-      status: query.status ?? 'DONE',
-    };
+    const where: any = {};
 
-    const search = query.search?.trim();
-    if (search) where.OR = this.buildSearchFilters(search);
-
-    const isZavod = query.status === Status.ZAVOD;
-    const dateField = isZavod ? 'getPrePaymentDate' : 'getAllPaymentDate';
     const dateFilter = this.buildDateFilter(query.startDate, query.endDate);
 
     if (dateFilter) {
-      where[dateField] = dateFilter;
+      where.OR = [
+        {
+          getPrePaymentDate: dateFilter,
+        },
+        {
+          getAllPaymentDate: dateFilter,
+        },
+      ];
     }
 
     const page = Number(query.page ?? 1);
@@ -41,11 +40,17 @@ export class StatisticsService {
           orderStatus: true,
           roomMeasurement: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          createdAt: 'desc',
+        },
         skip,
         take: limit,
       }),
-      this.prisma.order.count({ where }),
+
+      this.prisma.order.count({
+        where,
+      }),
+
       this.prisma.order.aggregate({
         where,
         _sum: {
@@ -56,10 +61,37 @@ export class StatisticsService {
       }),
     ]);
 
+    let income = 0;
+
+    for (const order of orders) {
+      const prePaymentDate = order.getPrePaymentDate
+        ? new Date(order.getPrePaymentDate)
+        : null;
+
+      const allPaymentDate = order.getAllPaymentDate
+        ? new Date(order.getAllPaymentDate)
+        : null;
+
+      if (
+        prePaymentDate &&
+        this.isDateInRange(prePaymentDate, query.startDate, query.endDate)
+      ) {
+        income += Number(order.prePayment || 0);
+      }
+
+      if (
+        allPaymentDate &&
+        this.isDateInRange(allPaymentDate, query.startDate, query.endDate)
+      ) {
+        income += Number(order.total || 0) - Number(order.prePayment || 0);
+      }
+    }
+
     return new ResponseDto(
       true,
       'Successfully found!',
       {
+        income,
         totalSum: totalAmount._sum.total || 0,
         totalPrePayment: totalAmount._sum.prePayment || 0,
         totalDueAmount: totalAmount._sum.dueAmount || 0,
@@ -119,5 +151,33 @@ export class StatisticsService {
     if (end) range.lte = end;
 
     return range;
+  }
+
+  private isDateInRange(
+    date: Date,
+    startDate?: string,
+    endDate?: string,
+  ): boolean {
+    const target = new Date(date);
+
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setUTCHours(0, 0, 0, 0);
+
+      if (target < start) {
+        return false;
+      }
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setUTCHours(23, 59, 59, 999);
+
+      if (target > end) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

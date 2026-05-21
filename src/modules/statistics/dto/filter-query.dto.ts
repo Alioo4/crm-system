@@ -22,26 +22,6 @@ export class StatisticsQueryDto {
   endDate?: string;
 
   @ApiPropertyOptional({
-    description: 'Search by name and phone in workers',
-    example: '998332218888',
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  search?: string;
-
-  @ApiPropertyOptional({
-    description: 'Status to filter statistics',
-    enum: Status,
-    example: Status.DONE,
-    default: Status.DONE,
-    required: false,
-  })
-  @IsEnum(Status)
-  @IsOptional()
-  status?: Status;
-
-  @ApiPropertyOptional({
     description: 'Page number for pagination (starts from 1)',
     example: 1,
     required: false,
