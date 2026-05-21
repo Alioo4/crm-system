@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatisticsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
+import { Status } from '@prisma/client';
 
 @Injectable()
 export class StatisticsService {
@@ -11,22 +12,26 @@ export class StatisticsService {
     if (role !== 'ADMIN') {
       throw new ForbiddenException('Permission denied');
     }
-  
-    const where: any = {};
+
+    const where: any = {
+      status: {
+        in: [Status.ZAVOD, Status.USTANOVCHIK, Status.DONE],
+      },
+    };
+    
     const dateFilter = this.buildDateFilter(query.startDate, query.endDate);
-  
+
     if (dateFilter) {
       where.OR = [
         { getPrePaymentDate: dateFilter },
         { getAllPaymentDate: dateFilter },
       ];
     }
-  
+
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
     const skip = (page - 1) * limit;
-  
-    // Income uchun barcha orderlarni olish (pagination siz)
+
     const [paginatedOrders, totalOrders, totalAmount, allOrdersForIncome] =
       await Promise.all([
         this.prisma.order.findMany({
@@ -41,9 +46,9 @@ export class StatisticsService {
           skip,
           take: limit,
         }),
-  
+
         this.prisma.order.count({ where }),
-  
+
         this.prisma.order.aggregate({
           where,
           _sum: {
@@ -52,8 +57,7 @@ export class StatisticsService {
             dueAmount: true,
           },
         }),
-  
-        // Faqat income hisoblash uchun — minimal field lar
+
         this.prisma.order.findMany({
           where,
           select: {
@@ -64,26 +68,25 @@ export class StatisticsService {
           },
         }),
       ]);
-  
-    // Income to'g'ri hisoblash — BARCHA orderlar bo'yicha
+
     let income = 0;
-  
+
     for (const order of allOrdersForIncome) {
       const prePaymentDate = order.getPrePaymentDate
         ? new Date(order.getPrePaymentDate)
         : null;
-  
+
       const allPaymentDate = order.getAllPaymentDate
         ? new Date(order.getAllPaymentDate)
         : null;
-  
+
       if (
         prePaymentDate &&
         this.isDateInRange(prePaymentDate, query.startDate, query.endDate)
       ) {
         income += Number(order.prePayment || 0);
       }
-  
+
       if (
         allPaymentDate &&
         this.isDateInRange(allPaymentDate, query.startDate, query.endDate)
@@ -91,7 +94,7 @@ export class StatisticsService {
         income += Number(order.total || 0) - Number(order.prePayment || 0);
       }
     }
-  
+
     return new ResponseDto(
       true,
       'Successfully found!',
