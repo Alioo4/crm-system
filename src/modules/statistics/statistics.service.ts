@@ -15,10 +15,10 @@ export class StatisticsService {
 
     const where: any = {
       status: {
-        in: [Status.ZAVOD, Status.USTANOVCHIK, Status.DONE],
+        in: [Status.ZAVOD, Status.DONE],
       },
     };
-    
+
     const dateFilter = this.buildDateFilter(query.startDate, query.endDate);
 
     if (dateFilter) {
