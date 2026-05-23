@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsOptional,
   IsString,
@@ -6,6 +7,9 @@ import {
   IsDateString,
   IsEnum,
   IsNumber,
+  IsArray,
+  ValidateNested,
+  IsInt,
 } from 'class-validator';
 
 export enum Status {
@@ -17,18 +21,39 @@ export enum Status {
   CANCEL = 'CANCEL',
 }
 
+export enum PaymentType {
+  CARD = 'card',
+  CASH = 'cash',
+}
+
+export class PaymentItemDto {
+  @IsEnum(PaymentType)
+  type: PaymentType;
+
+  @IsInt()
+  amount: number;
+}
+
 export class UpdateOrderDto {
   @ApiPropertyOptional({ example: 'Jane Doe', maxLength: 128, required: false })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ example: '+998907654321', maxLength: 16, required: false })
+  @ApiPropertyOptional({
+    example: '+998907654321',
+    maxLength: 16,
+    required: false,
+  })
   @IsOptional()
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ example: 'New comment on order', maxLength: 256, required: false })
+  @ApiPropertyOptional({
+    example: 'New comment on order',
+    maxLength: 256,
+    required: false,
+  })
   @IsOptional()
   @IsString()
   comment?: string;
@@ -46,7 +71,10 @@ export class UpdateOrderDto {
   @IsDateString()
   endDateJob?: Date;
 
-  @ApiPropertyOptional({ example: '8f5a945a-4c62-437e-95f2-bd45a44d12a7', required: false })
+  @ApiPropertyOptional({
+    example: '8f5a945a-4c62-437e-95f2-bd45a44d12a7',
+    required: false,
+  })
   @IsOptional()
   @IsUUID()
   orderStatusId?: string;
@@ -80,20 +108,44 @@ export class UpdateOrderDto {
   @IsOptional()
   workerArrivalDate?: Date;
 
-  @ApiPropertyOptional({ description: 'Total price', example: 1200000, required: false })
+  @ApiPropertyOptional({
+    description: 'Total price',
+    example: 1200000,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   total?: number;
 
-  @ApiPropertyOptional({ description: 'Pre-payment', example: 500000, required: false })
+  @ApiPropertyOptional({
+    description: 'Pre-payment',
+    example: 500000,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   prePayment?: number;
 
-  @ApiPropertyOptional({ description: 'Due-amount', example: 700000, required: false })
+  @ApiPropertyOptional({
+    description: 'Due-amount',
+    example: 700000,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   dueAmount?: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentItemDto)
+  @IsOptional()
+  startCurrency?: PaymentItemDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentItemDto)
+  @IsOptional()
+  endCurrency?: PaymentItemDto[];
 
   @ApiProperty({
     description: 'Region Id',

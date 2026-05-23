@@ -366,6 +366,23 @@ export class OrderService {
         },
       });
 
+      const mapCurrency = (items: CurrencyItem[], isPrePayment: boolean) =>
+        items?.map(({ type, amount }) => ({
+          card: type === 'card' ? amount : 0,
+          cash: type === 'cash' ? amount : 0,
+          orederId: id,
+          isPrePayment,
+        })) ?? [];
+      
+      const currencies = [
+        ...mapCurrency(updateOrderDto.startCurrency || [], true),
+        ...mapCurrency(updateOrderDto.endCurrency || [], false),
+      ];
+      
+      if (currencies.length) {
+        await this.prisma.currencyOrder.createMany({ data: currencies });
+      }
+
       const sendTelegram = async (type: 'new' | 'changed' | 'done') => {
         const rooms = await this.prisma.roomMeasurement.findMany({
           where: { orderId: id },
