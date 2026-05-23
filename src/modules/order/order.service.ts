@@ -366,7 +366,7 @@ export class OrderService {
         },
       });
 
-      const mapCurrency = (items: CurrencyItem[], isPrePayment: boolean) =>
+      const mapCurrency = (items: { type: 'card' | 'cash', amount: number }[], isPrePayment: boolean) =>
         items?.map(({ type, amount }) => ({
           card: type === 'card' ? amount : 0,
           cash: type === 'cash' ? amount : 0,
