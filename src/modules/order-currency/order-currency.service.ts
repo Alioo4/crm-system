@@ -24,9 +24,10 @@ export class OrderCurrencyService {
 
     const created = await this.prisma.currencyOrder.create({
       data: {
-        name: createDto.name,
-        card: createDto.card ?? 0,
-        cash: createDto.cash ?? 0,
+        note: createDto.note,
+        card: createDto.card,
+        cash: createDto.cash,
+        isPrePayment: createDto.isPrePayment,
         orederId: createDto.orederId,
       },
     });
@@ -80,9 +81,10 @@ export class OrderCurrencyService {
     const updated = await this.prisma.currencyOrder.update({
       where: { id },
       data: {
-        name: updateDto.name,
+        note: updateDto.note,
         card: updateDto.card,
         cash: updateDto.cash,
+        isPrePayment: updateDto.isPrePayment,
         orederId: updateDto.orederId,
       },
     });

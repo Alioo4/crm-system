@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsUUID, IsString, IsInt, Min } from 'class-validator';
+import {
+  IsOptional,
+  IsUUID,
+  IsString,
+  IsInt,
+  Min,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateCurrencyOrderDto {
   @ApiPropertyOptional({
@@ -9,7 +16,7 @@ export class CreateCurrencyOrderDto {
   })
   @IsOptional()
   @IsString()
-  name?: string;
+  note?: string;
 
   @ApiPropertyOptional({
     description: 'Amount on card',
@@ -32,10 +39,16 @@ export class CreateCurrencyOrderDto {
   cash?: number;
 
   @ApiProperty({
+    description: 'Indicates if this is a pre-payment',
+    example: true,
+  })
+  @IsBoolean()
+  isPrePayment: boolean;
+
+  @ApiProperty({
     description: 'Related order ID (UUID)',
     example: 'b2c5fe1a-1db1-4c0b-b2fd-3875e54b18df',
   })
   @IsUUID()
   orederId: string;
 }
-

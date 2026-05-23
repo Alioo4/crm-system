@@ -178,9 +178,10 @@ model CurrencyOrder {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  name String? @unique @db.VarChar(128)
-  card Int? @default(0) @db.Integer 
-  cash Int? @default(0) @db.Integer 
+  note String? @db.VarChar(128)
+  card Int? @default(0) @db.Integer
+  cash Int? @default(0) @db.Integer
+  isPrePayment Boolean @map("pre_payment")
 
   orederId String @map("order_id") @db.Uuid
   order    Order  @relation(fields: [orederId], references: [id], onDelete: Cascade)
