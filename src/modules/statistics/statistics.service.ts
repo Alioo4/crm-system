@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentType, StatisticsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
-import { Status } from '@prisma/client';
+import { Role, Status } from '@prisma/client';
 
 @Injectable()
 export class StatisticsService {
@@ -32,6 +32,19 @@ export class StatisticsService {
       where.currencyOrder = { some: { card: { gt: 0 } } };
     } else if (query.paymentType === PaymentType.CASH) {
       where.currencyOrder = { some: { cash: { gt: 0 } } };
+    }
+
+    if (query.userId) {
+      where.AND = [
+        {
+          OR: [
+            { managerId: query.userId },
+            { zamirId: query.userId },
+            { zavodId: query.userId },
+            { ustId: query.userId },
+          ],
+        },
+      ];
     }
 
     const page = Number(query.page ?? 1);

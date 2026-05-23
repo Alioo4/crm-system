@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsOptional } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum PaymentType {
@@ -31,6 +31,14 @@ export class StatisticsQueryDto {
   @IsEnum(PaymentType)
   @IsOptional()
   paymentType?: PaymentType;
+
+  @ApiPropertyOptional({
+    description: 'Filter by user ID (matches managerId, zamirId, zavodId or ustId)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsUUID()
+  @IsOptional()
+  userId?: string;
 
   @ApiPropertyOptional({ description: 'Page number (starts from 1)', example: 1 })
   @IsOptional()
