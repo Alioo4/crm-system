@@ -394,7 +394,7 @@ export class OrderService {
       };
 
       if (findOrder.status === Status.ZAMIR && status === Status.ZAVOD) {
-        await Promise.all([
+        await Promise.allSettled([
           sendTelegramOrderForReport(changeOrder),
           sendTelegram('new'),
         ]);
