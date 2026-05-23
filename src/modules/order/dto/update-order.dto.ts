@@ -135,12 +135,34 @@ export class UpdateOrderDto {
   @IsOptional()
   dueAmount?: number;
 
+  @ApiPropertyOptional({
+    type: [PaymentItemDto],
+    example: [
+      {
+        type: 'card',
+        amount: 100000,
+      },
+      {
+        type: 'cash',
+        amount: 200000,
+      },
+    ],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PaymentItemDto)
   @IsOptional()
   startCurrency?: PaymentItemDto[];
 
+  @ApiPropertyOptional({
+    type: [PaymentItemDto],
+    example: [
+      {
+        type: 'card',
+        amount: 300000,
+      },
+    ],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PaymentItemDto)
