@@ -69,6 +69,7 @@ model Order {
   roomMeasurement     RoomMeasurement[]
   currencyOrder       CurrencyOrder[]
   financeTransactions FinanceTransaction[]
+  hashtags            Hashtag[]
 }
 
 model OrderStatus {
@@ -111,25 +112,10 @@ model Hashtag {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  name String @unique @db.VarChar(256)
+  name   String  @unique @db.VarChar(64)
+  orders Order[]
 
-  orders    Order[]
-  histories History[]
-
-  @@map("hashtags")
-}
-
-model OrderHashtag {
-  orderId   String @db.Uuid
-  hashtagId String @db.Uuid
-
-  createdAt DateTime @default(now())
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  hashtag Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
-
-  @@id([orderId, hashtagId])
-  @@map("order_hashtag")
+  @@map("hashtag")
 }
 
 model RoomMeasurement {

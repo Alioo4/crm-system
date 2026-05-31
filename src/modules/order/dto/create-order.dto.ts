@@ -1,11 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsOptional,
-  IsString,
-  IsNumber,
+  IsArray,
   IsDateString,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
 } from 'class-validator';
 
 export enum Status {
@@ -117,6 +119,16 @@ export class CreateOrderDto {
   @IsEnum(Status)
   @IsOptional()
   status?: Status;
+
+  @ApiPropertyOptional({
+    description: 'Hashtag IDs to attach',
+    example: ['550e8400-e29b-41d4-a716-446655440000'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  hashtagIds?: string[];
 }
 
 export class ResponseOrderPosDto<T = any> {

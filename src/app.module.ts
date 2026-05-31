@@ -12,6 +12,7 @@ import { RoomMeansurementModule } from './modules/room-meansurement/room-meansur
 import { HistoryModule } from './modules/history/history.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
 import { OrderCurrencyModule } from './modules/order-currency/order-currency.module';
+import { HashtagModule } from './modules/hashtag/hashtag.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { OrderCurrencyModule } from './modules/order-currency/order-currency.mod
     HistoryModule,
     StatisticsModule,
     OrderCurrencyModule,
+    HashtagModule,
   ],
   controllers: [],
   providers: [

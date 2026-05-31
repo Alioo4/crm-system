@@ -40,6 +40,7 @@ export class OrderService {
       endDateJob,
       workerArrivalDate,
       status,
+      hashtagIds,
       ...rest
     } = createOrderDto;
 
@@ -92,6 +93,9 @@ export class OrderService {
         managerName: findUseer?.name || null,
         managerphone: findUseer?.phone || null,
         ...rest,
+        hashtags: hashtagIds?.length
+          ? { connect: hashtagIds.map((hid) => ({ id: hid })) }
+          : undefined,
       },
     });
 
@@ -204,6 +208,7 @@ export class OrderService {
           roomMeasurement: true,
           currencyOrder: true,
           financeTransactions: true,
+          hashtags: true,
         },
       }),
       this.prisma.order.count({ where }),
@@ -227,6 +232,7 @@ export class OrderService {
         roomMeasurement: true,
         currencyOrder: true,
         financeTransactions: true,
+        hashtags: true,
       },
     });
 
@@ -358,7 +364,7 @@ export class OrderService {
         await this.history.create(history);
       }
 
-      const { payments, startCurrency, endCurrency, ...orderData } =
+      const { payments, startCurrency, endCurrency, hashtagIds, ...orderData } =
         updateOrderDto;
 
       const changeOrder = await this.prisma.order.update({
@@ -367,6 +373,9 @@ export class OrderService {
           ...orderData,
           orderStatusId:
             status === Status.ZAMIR ? null : orderData.orderStatusId,
+          ...(hashtagIds !== undefined && {
+            hashtags: { set: hashtagIds.map((hid) => ({ id: hid })) },
+          }),
         },
         include: {
           region: true,
@@ -374,6 +383,7 @@ export class OrderService {
           orderStatus: true,
           roomMeasurement: true,
           currencyOrder: true,
+          hashtags: true,
         },
       });
 

@@ -252,4 +252,14 @@ export class UpdateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => PaymentDto)
   payments?: PaymentDto[];
+
+  @ApiPropertyOptional({
+    description: 'Hashtag IDs to set (replaces existing list)',
+    example: ['550e8400-e29b-41d4-a716-446655440000'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  hashtagIds?: string[];
 }
