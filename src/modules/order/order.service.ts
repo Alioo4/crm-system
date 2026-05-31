@@ -8,7 +8,12 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { IResponse, ResponseDto } from 'src/common/types';
 import { HistoryService } from '../history/history.service';
-import { Role, Status } from '@prisma/client';
+import {
+  FinanceTransactionMethod,
+  FinanceTransactionType,
+  Role,
+  Status,
+} from '@prisma/client';
 import { isUUID } from 'src/common/types/isUuid';
 import {
   generateTelegramMessage,
@@ -198,6 +203,7 @@ export class OrderService {
           orderStatus: true,
           roomMeasurement: true,
           currencyOrder: true,
+          financeTransactions: true,
         },
       }),
       this.prisma.order.count({ where }),
@@ -219,6 +225,8 @@ export class OrderService {
         social: true,
         orderStatus: true,
         roomMeasurement: true,
+        currencyOrder: true,
+        financeTransactions: true,
       },
     });
 
@@ -350,12 +358,15 @@ export class OrderService {
         await this.history.create(history);
       }
 
+      const { payments, startCurrency, endCurrency, ...orderData } =
+        updateOrderDto;
+
       const changeOrder = await this.prisma.order.update({
         where: { id },
         data: {
-          ...updateOrderDto,
+          ...orderData,
           orderStatusId:
-            status === Status.ZAMIR ? null : updateOrderDto.orderStatusId,
+            status === Status.ZAMIR ? null : orderData.orderStatusId,
         },
         include: {
           region: true,
@@ -378,13 +389,58 @@ export class OrderService {
         })) ?? [];
 
       const currencies = [
-        ...mapCurrency(updateOrderDto.startCurrency || [], true),
-        ...mapCurrency(updateOrderDto.endCurrency || [], false),
+        ...mapCurrency(startCurrency || [], true),
+        ...mapCurrency(endCurrency || [], false),
       ];
 
-      if (currencies.length) {
-        await this.prisma.currencyOrder.createMany({ data: currencies });
+      const financeData = (payments || []).map((p) => ({
+        type: p.paymentType as unknown as FinanceTransactionType,
+        method: p.paymentMethod as unknown as FinanceTransactionMethod,
+        amount: p.amount,
+        comment: p.comment,
+        createdById: sub,
+        orderId: id,
+      }));
+
+      if (status === Status.CANCEL) {
+        const REVERSAL_MAP: Partial<
+          Record<FinanceTransactionType, FinanceTransactionType>
+        > = {
+          [FinanceTransactionType.SALE]: FinanceTransactionType.SALE_CANCEL,
+          [FinanceTransactionType.SALE_ADDITION]:
+            FinanceTransactionType.SALE_CANCEL,
+          [FinanceTransactionType.PREPAYMENT]: FinanceTransactionType.REFUND,
+          [FinanceTransactionType.PAYMENT]: FinanceTransactionType.REFUND,
+        };
+
+        const existingTxs = await this.prisma.financeTransaction.findMany({
+          where: { orderId: id },
+          select: { type: true, method: true, amount: true },
+        });
+
+        for (const tx of existingTxs) {
+          const reversalType = REVERSAL_MAP[tx.type];
+          if (reversalType) {
+            financeData.push({
+              type: reversalType,
+              method: tx.method,
+              amount: tx.amount,
+              comment: undefined,
+              createdById: sub,
+              orderId: id,
+            });
+          }
+        }
       }
+
+      await Promise.all([
+        currencies.length
+          ? this.prisma.currencyOrder.createMany({ data: currencies })
+          : Promise.resolve(),
+        financeData.length
+          ? this.prisma.financeTransaction.createMany({ data: financeData })
+          : Promise.resolve(),
+      ]);
 
       const sendTelegram = async (type: 'new' | 'changed' | 'done') => {
         const rooms = await this.prisma.roomMeasurement.findMany({

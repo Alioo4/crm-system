@@ -17,6 +17,8 @@ model User {
   name     String? @db.VarChar(128)
   password String  @db.VarChar(128)
   role     Role    @default(MANAGER)
+
+  financeTransactions FinanceTransaction[]
 }
 
 model Order {
@@ -64,8 +66,9 @@ model Order {
   orderStatusId String?      @map("order_status_id") @db.Uuid
   orderStatus   OrderStatus? @relation(fields: [orderStatusId], references: [id], onDelete: Cascade)
 
-  roomMeasurement RoomMeasurement[]
-  currencyOrder   CurrencyOrder[]
+  roomMeasurement     RoomMeasurement[]
+  currencyOrder       CurrencyOrder[]
+  financeTransactions FinanceTransaction[]
 }
 
 model OrderStatus {
@@ -101,6 +104,32 @@ model Social {
 
   orders  Order[]
   History History[]
+}
+
+model Hashtag {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name String @unique @db.VarChar(256)
+
+  orders    Order[]
+  histories History[]
+
+  @@map("hashtags")
+}
+
+model OrderHashtag {
+  orderId   String @db.Uuid
+  hashtagId String @db.Uuid
+
+  createdAt DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  hashtag Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@id([orderId, hashtagId])
+  @@map("order_hashtag")
 }
 
 model RoomMeasurement {
@@ -189,6 +218,24 @@ model CurrencyOrder {
   @@map("currency_order")
 }
 
+model FinanceTransaction {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  type   FinanceTransactionType
+  method FinanceTransactionMethod
+  amount Int  
+  comment String?                @db.VarChar(1024)
+
+  createdById   String? @map("created_by_id") @db.Uuid
+  createdBy     User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  orderId String @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("finance_transaction")
+}
+
 enum Role {
   ADMIN
   MANAGER
@@ -204,4 +251,18 @@ enum Status {
   USTANOVCHIK
   DONE
   CANCEL
+}
+
+enum FinanceTransactionType {
+  SALE
+  SALE_ADDITION 
+  SALE_CANCEL   
+  PREPAYMENT  
+  PAYMENT       
+  REFUND        
+}
+
+enum FinanceTransactionMethod {
+  CASH
+  CARD
 }

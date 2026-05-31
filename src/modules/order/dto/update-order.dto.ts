@@ -34,6 +34,49 @@ export class PaymentItemDto {
   amount: number;
 }
 
+export enum PaymentMethod {
+  CASH = 'CASH',
+  CARD = 'CARD',
+}
+ 
+export enum PaymentTypeEnum {
+  SALE = 'SALE',
+  SALE_ADDITION = 'SALE_ADDITION',
+  SALE_CANCEL = 'SALE_CANCEL',
+  PREPAYMENT = 'PREPAYMENT',
+  PAYMENT = 'PAYMENT',
+  REFUND = 'REFUND',
+}
+
+export class PaymentDto {
+  @ApiProperty({
+    example: 300000,
+  })
+  @IsNumber()
+  amount: number;
+
+  @ApiProperty({
+    enum: PaymentMethod,
+    example: PaymentMethod.CASH,
+  })
+  @IsEnum(PaymentMethod)
+  paymentMethod: PaymentMethod;
+
+  @ApiProperty({
+    enum: PaymentTypeEnum,
+    example: PaymentTypeEnum.PREPAYMENT,
+  })
+  @IsEnum(PaymentTypeEnum)
+  paymentType: PaymentTypeEnum;
+
+  @ApiPropertyOptional({
+    example: 'Naqd avans olindi',
+  })
+  @IsOptional()
+  @IsString()
+  comment?: string;
+}
+
 export class UpdateOrderDto {
   @ApiPropertyOptional({ example: 'Jane Doe', maxLength: 128, required: false })
   @IsOptional()
@@ -186,4 +229,27 @@ export class UpdateOrderDto {
   @IsNumber()
   @IsOptional()
   latitude?: number;
+
+  @ApiPropertyOptional({
+    type: [PaymentDto],
+    example: [
+      {
+        amount: 300000,
+        paymentMethod: 'CASH',
+        paymentType: 'PREPAYMENT',
+        comment: 'Naqd avans olindi',
+      },
+      {
+        amount: 200000,
+        paymentMethod: 'CARD',
+        paymentType: 'PREPAYMENT',
+        comment: 'Karta orqali avans olindi',
+      },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentDto)
+  payments?: PaymentDto[];
 }
