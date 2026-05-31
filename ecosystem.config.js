@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
       {
-        name: 'nest-api',
+        name: 'nest-api-dev',
         script: 'dist/src/main.js',
   
         instances: 1,
