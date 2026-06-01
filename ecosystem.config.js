@@ -9,7 +9,7 @@ module.exports = {
   
         autorestart: true,
         watch: false,
-        max_memory_restart: '500M',
+        max_memory_restart: '300M',
   
         kill_timeout: 5000,
         listen_timeout: 5000,
@@ -20,17 +20,8 @@ module.exports = {
         merge_logs: true,
   
         env: {
-          NODE_ENV: 'production',
-          PORT: 8080,
-        },
-  
-        env_production: {
-          NODE_ENV: 'production',
-          PORT: 8080,
-          GIT_SHA: process.env.GIT_SHA,
-          GIT_SHORT: process.env.GIT_SHORT,
-          GIT_BRANCH: process.env.GIT_BRANCH,
-          BUILD_TIME: process.env.BUILD_TIME,
+          NODE_ENV: 'development',
+          PORT: 7007,
         },
       },
     ],
