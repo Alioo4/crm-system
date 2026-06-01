@@ -343,9 +343,9 @@ export class OrderService {
       };
 
       if (
-        status === Status.ZAVOD ||
-        status === Status.USTANOVCHIK ||
-        status === Status.DONE
+        (findOrder.status === Status.ZAMIR && status === Status.ZAVOD) ||
+        (findOrder.status === Status.ZAVOD && status === Status.USTANOVCHIK) || 
+        (findOrder.status === Status.USTANOVCHIK && status === Status.DONE)
       ) {
         await this.history.create(history);
       }
