@@ -207,7 +207,19 @@ export class OrderService {
           orderStatus: true,
           roomMeasurement: true,
           currencyOrder: true,
-          financeTransactions: true,
+          financeTransactions: {
+            select: {
+              id: true,
+              createdAt: true,
+              type: true,
+              method: true,
+              amount: true,
+              comment: true,
+              createdBy: {
+                select: { id: true, name: true, phone: true },
+              },
+            },
+          },
           hashtags: true,
         },
       }),
