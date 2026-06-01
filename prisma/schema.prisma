@@ -209,7 +209,7 @@ model FinanceTransaction {
   createdAt DateTime @default(now()) @map("created_at")
 
   type   FinanceTransactionType
-  method FinanceTransactionMethod
+  method FinanceTransactionMethod?
   amount Int  
   comment String?                @db.VarChar(1024)
 

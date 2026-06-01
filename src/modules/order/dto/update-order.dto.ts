@@ -60,7 +60,8 @@ export class PaymentDto {
     example: PaymentMethod.CASH,
   })
   @IsEnum(PaymentMethod)
-  paymentMethod: PaymentMethod;
+  @IsOptional()
+  paymentMethod?: PaymentMethod;
 
   @ApiProperty({
     enum: PaymentTypeEnum,
