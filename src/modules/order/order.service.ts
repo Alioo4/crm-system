@@ -405,7 +405,7 @@ export class OrderService {
 
       const financeData = (payments || []).map((p) => ({
         type: p.paymentType as unknown as FinanceTransactionType,
-        method: p.paymentMethod as unknown as FinanceTransactionMethod,
+        method: p.paymentMethod as unknown as FinanceTransactionMethod | null,
         amount: p.amount,
         comment: p.comment,
         createdById: sub,
