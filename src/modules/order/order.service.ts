@@ -248,7 +248,19 @@ export class OrderService {
         orderStatus: true,
         roomMeasurement: true,
         currencyOrder: true,
-        financeTransactions: true,
+        financeTransactions: {
+          select: {
+            id: true,
+            createdAt: true,
+            type: true,
+            method: true,
+            amount: true,
+            comment: true,
+            createdBy: {
+              select: { id: true, name: true, phone: true, role: true },
+            },
+          },
+        },
         hashtags: true,
       },
     });
@@ -257,7 +269,10 @@ export class OrderService {
       throw new BadRequestException(new ResponseDto(false, 'Order not found'));
     }
 
-    return new ResponseDto(true, 'Order found', order);
+    return new ResponseDto(true, 'Order found', {
+      ...order,
+      financeSummary: this.calcFinanceSummary(order.financeTransactions),
+    });
   }
 
   async update(
