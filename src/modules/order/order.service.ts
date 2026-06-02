@@ -216,7 +216,7 @@ export class OrderService {
               amount: true,
               comment: true,
               createdBy: {
-                select: { id: true, name: true, phone: true },
+                select: { id: true, name: true, phone: true, role: true },
               },
             },
           },
@@ -226,7 +226,12 @@ export class OrderService {
       this.prisma.order.count({ where }),
     ]);
 
-    return new ResponseDto(true, 'Successfully found!', orders, {
+    const data = orders.map((order) => ({
+      ...order,
+      financeSummary: this.calcFinanceSummary(order.financeTransactions),
+    }));
+
+    return new ResponseDto(true, 'Successfully found!', data, {
       total,
       page,
       limit,
@@ -791,5 +796,27 @@ export class OrderService {
     });
 
     return new ResponseDto(true, 'My orders found', orders);
+  }
+
+  private calcFinanceSummary(
+    transactions: { type: FinanceTransactionType; amount: number }[],
+  ) {
+    let sale = 0, saleAddition = 0, saleCancel = 0;
+    let prepayment = 0, payment = 0, refund = 0;
+
+    for (const tx of transactions ?? []) {
+      switch (tx.type) {
+        case FinanceTransactionType.SALE: sale += tx.amount; break;
+        case FinanceTransactionType.SALE_ADDITION: saleAddition += tx.amount; break;
+        case FinanceTransactionType.SALE_CANCEL: saleCancel += tx.amount; break;
+        case FinanceTransactionType.PREPAYMENT: prepayment += tx.amount; break;
+        case FinanceTransactionType.PAYMENT: payment += tx.amount; break;
+        case FinanceTransactionType.REFUND: refund += tx.amount; break;
+      }
+    }
+
+    const currentTotal = sale + saleAddition - saleCancel;
+    const paidAmount = prepayment + payment - refund;
+    return { currentTotal, paidAmount, debtAmount: currentTotal - paidAmount };
   }
 }

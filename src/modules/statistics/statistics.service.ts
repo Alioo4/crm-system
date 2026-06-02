@@ -79,7 +79,7 @@ export class StatisticsService {
               amount: true,
               comment: true,
               createdBy: {
-                select: { id: true, name: true, phone: true },
+                select: { id: true, name: true, phone: true, role: true},
               },
             },
           },
@@ -125,7 +125,10 @@ export class StatisticsService {
           refund: get(FinanceTransactionType.REFUND),
         },
         totalOrders,
-        orders,
+        orders: orders.map((order) => ({
+          ...order,
+          financeSummary: this.calcFinanceSummary(order.financeTransactions),
+        })),
       },
       {
         total: totalOrders,
@@ -149,5 +152,27 @@ export class StatisticsService {
     if (startDate) range.gte = toUtc(startDate);
     if (endDate) range.lte = toUtc(endDate, true);
     return range;
+  }
+
+  private calcFinanceSummary(
+    transactions: { type: FinanceTransactionType; amount: number }[],
+  ) {
+    let sale = 0, saleAddition = 0, saleCancel = 0;
+    let prepayment = 0, payment = 0, refund = 0;
+
+    for (const tx of transactions ?? []) {
+      switch (tx.type) {
+        case FinanceTransactionType.SALE: sale += tx.amount; break;
+        case FinanceTransactionType.SALE_ADDITION: saleAddition += tx.amount; break;
+        case FinanceTransactionType.SALE_CANCEL: saleCancel += tx.amount; break;
+        case FinanceTransactionType.PREPAYMENT: prepayment += tx.amount; break;
+        case FinanceTransactionType.PAYMENT: payment += tx.amount; break;
+        case FinanceTransactionType.REFUND: refund += tx.amount; break;
+      }
+    }
+
+    const currentTotal = sale + saleAddition - saleCancel;
+    const paidAmount = prepayment + payment - refund;
+    return { currentTotal, paidAmount, debtAmount: currentTotal - paidAmount };
   }
 }
