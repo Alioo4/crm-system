@@ -1,11 +1,8 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentType, StatisticsQueryDto } from './dto/filter-query.dto';
+import { StatisticsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
-import {
-  FinanceTransactionMethod,
-  FinanceTransactionType,
-} from '@prisma/client';
+import { FinanceTransactionType, FinanceTransactionMethod } from '@prisma/client';
 
 @Injectable()
 export class StatisticsService {
@@ -16,163 +13,183 @@ export class StatisticsService {
       throw new ForbiddenException('Permission denied');
     }
 
-    const page = Number(query.page ?? 1);
-    const limit = Number(query.limit ?? 10);
-    const skip = (page - 1) * limit;
+    const dateFilter = this.buildDateFilter(query.from, query.to);
 
-    // Base filter: date range on createdAt + optional method filter
-    const txBaseWhere: any = {};
+    const transactions = await this.prisma.financeTransaction.findMany({
+      where: dateFilter ? { createdAt: dateFilter } : undefined,
+      select: {
+        type: true,
+        method: true,
+        amount: true,
+        orderId: true,
+        createdBy: {
+          select: { id: true, name: true, role: true },
+        },
+      },
+    });
 
-    const dateRange = this.buildDateFilter(query.startDate, query.endDate);
-    if (dateRange) {
-      txBaseWhere.createdAt = dateRange;
+    let sumSale = 0, sumSaleAddition = 0, sumSaleCancel = 0;
+    let sumCash = 0, sumCard = 0, sumRefundCash = 0, sumRefundCard = 0;
+    const summaryOrderIds = new Set<string>();
+
+    for (const tx of transactions) {
+      summaryOrderIds.add(tx.orderId);
+      this.accumulate(tx, {
+        onSale: (a) => { sumSale += a; },
+        onSaleAddition: (a) => { sumSaleAddition += a; },
+        onSaleCancel: (a) => { sumSaleCancel += a; },
+        onCash: (a) => { sumCash += a; },
+        onCard: (a) => { sumCard += a; },
+        onRefundCash: (a) => { sumRefundCash += a; sumCash -= a; },
+        onRefundCard: (a) => { sumRefundCard += a; sumCard -= a; },
+      });
     }
 
-    if (query.paymentType === PaymentType.CARD) {
-      txBaseWhere.method = FinanceTransactionMethod.CARD;
-    } else if (query.paymentType === PaymentType.CASH) {
-      txBaseWhere.method = FinanceTransactionMethod.CASH;
+    const netSale = sumSale + sumSaleAddition - sumSaleCancel;
+    const totalReceived = sumCash + sumCard;
+
+    const summary = {
+      ordersCount: summaryOrderIds.size,
+      sales: { sale: sumSale, saleAddition: sumSaleAddition, saleCancel: sumSaleCancel, netSale },
+      payments: { cash: sumCash, card: sumCard, refundCash: sumRefundCash, refundCard: sumRefundCard, totalReceived },
+      debt: { totalDebt: netSale - totalReceived },
+    };
+
+    type OrderAgg = {
+      orderId: string;
+      sale: number; saleAddition: number; saleCancel: number;
+      cash: number; card: number; refundCash: number; refundCard: number;
+    };
+    type UserAgg = {
+      userId: string; name: string;
+      orderIds: Set<string>;
+      sale: number; saleAddition: number; saleCancel: number;
+      cash: number; card: number; refundCash: number; refundCard: number;
+      orders: Map<string, OrderAgg>;
+    };
+
+    const roleMap = new Map<string, Map<string, UserAgg>>();
+
+    for (const tx of transactions) {
+      if (!tx.createdBy) continue;
+      const { id: userId, name, role: userRole } = tx.createdBy;
+
+      if (!roleMap.has(userRole)) roleMap.set(userRole, new Map());
+      const userMap = roleMap.get(userRole)!;
+
+      if (!userMap.has(userId)) {
+        userMap.set(userId, {
+          userId,
+          name: name ?? '',
+          orderIds: new Set(),
+          sale: 0, saleAddition: 0, saleCancel: 0,
+          cash: 0, card: 0, refundCash: 0, refundCard: 0,
+          orders: new Map(),
+        });
+      }
+      const user = userMap.get(userId)!;
+      user.orderIds.add(tx.orderId);
+
+      if (!user.orders.has(tx.orderId)) {
+        user.orders.set(tx.orderId, {
+          orderId: tx.orderId,
+          sale: 0, saleAddition: 0, saleCancel: 0,
+          cash: 0, card: 0, refundCash: 0, refundCard: 0,
+        });
+      }
+      const ord = user.orders.get(tx.orderId)!;
+
+      this.accumulate(tx, {
+        onSale: (a) => { user.sale += a; ord.sale += a; },
+        onSaleAddition: (a) => { user.saleAddition += a; ord.saleAddition += a; },
+        onSaleCancel: (a) => { user.saleCancel += a; ord.saleCancel += a; },
+        onCash: (a) => { user.cash += a; ord.cash += a; },
+        onCard: (a) => { user.card += a; ord.card += a; },
+        onRefundCash: (a) => { user.refundCash += a; ord.refundCash += a; user.cash -= a; ord.cash -= a; },
+        onRefundCard: (a) => { user.refundCard += a; ord.refundCard += a; user.card -= a; ord.card -= a; },
+      });
     }
 
-    const txWhere: any = { ...txBaseWhere };
-    if (query.userId) {
-      txWhere.order = {
-        OR: [
-          { managerId: query.userId },
-          { zamirId: query.userId },
-          { zavodId: query.userId },
-          { ustId: query.userId },
-        ],
-      };
-    }
-
-    const orderWhere: any = { financeTransactions: { some: txBaseWhere } };
-    if (query.userId) {
-      orderWhere.OR = [
-        { managerId: query.userId },
-        { zamirId: query.userId },
-        { zavodId: query.userId },
-        { ustId: query.userId },
-      ];
-    }
-
-    const [txGrouped, orders, totalOrders] = await Promise.all([
-      this.prisma.financeTransaction.groupBy({
-        by: ['type'],
-        where: txWhere,
-        _sum: { amount: true },
-      }),
-      this.prisma.order.findMany({
-        where: orderWhere,
-        include: {
-          region: true,
-          social: true,
-          orderStatus: true,
-          roomMeasurement: true,
-          currencyOrder: true,
-          financeTransactions: {
-            select: {
-              id: true,
-              createdAt: true,
-              type: true,
-              method: true,
-              amount: true,
-              comment: true,
-              createdBy: {
-                select: { id: true, name: true, phone: true, role: true},
-              },
-            },
+    const byRole = Array.from(roleMap.entries()).map(([roleName, userMap]) => ({
+      role: roleName,
+      users: Array.from(userMap.values()).map((u) => {
+        const userNetSale = u.sale + u.saleAddition - u.saleCancel;
+        const userTotalReceived = u.cash + u.card;
+        return {
+          userId: u.userId,
+          name: u.name,
+          ordersCount: u.orderIds.size,
+          sales: {
+            sale: u.sale, saleAddition: u.saleAddition, saleCancel: u.saleCancel,
+            netSale: userNetSale,
           },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
+          payments: {
+            cash: u.cash, card: u.card,
+            refundCash: u.refundCash, refundCard: u.refundCard,
+            totalReceived: userTotalReceived,
+          },
+          debt: { totalDebt: userNetSale - userTotalReceived },
+          orders: Array.from(u.orders.values()).map((o) => {
+            const orderNetSale = o.sale + o.saleAddition - o.saleCancel;
+            const orderTotalReceived = o.cash + o.card;
+            return {
+              orderId: o.orderId,
+              cash: o.cash,
+              card: o.card,
+              totalReceived: orderTotalReceived,
+              netSale: orderNetSale,
+              debtAmount: orderNetSale - orderTotalReceived,
+            };
+          }),
+        };
       }),
-      this.prisma.order.count({ where: orderWhere }),
-    ]);
+    }));
 
-    const sumByType = new Map(
-      txGrouped.map((g) => [g.type, g._sum.amount ?? 0]),
-    );
-
-    const get = (type: FinanceTransactionType) => sumByType.get(type) ?? 0;
-
-    const currentTotal =
-      get(FinanceTransactionType.SALE) +
-      get(FinanceTransactionType.SALE_ADDITION) -
-      get(FinanceTransactionType.SALE_CANCEL);
-
-    const paidAmount =
-      get(FinanceTransactionType.PREPAYMENT) +
-      get(FinanceTransactionType.PAYMENT) -
-      get(FinanceTransactionType.REFUND);
-
-    const debtAmount = currentTotal - paidAmount;
-
-    return new ResponseDto(
-      true,
-      'Successfully found!',
-      {
-        currentTotal,
-        paidAmount,
-        debtAmount,
-        breakdown: {
-          sale: get(FinanceTransactionType.SALE),
-          saleAddition: get(FinanceTransactionType.SALE_ADDITION),
-          saleCancel: get(FinanceTransactionType.SALE_CANCEL),
-          prepayment: get(FinanceTransactionType.PREPAYMENT),
-          payment: get(FinanceTransactionType.PAYMENT),
-          refund: get(FinanceTransactionType.REFUND),
-        },
-        totalOrders,
-        orders: orders.map((order) => ({
-          ...order,
-          financeSummary: this.calcFinanceSummary(order.financeTransactions),
-        })),
-      },
-      {
-        total: totalOrders,
-        page,
-        limit,
-        totalPages: Math.ceil(totalOrders / limit),
-      },
-    );
+    return new ResponseDto(true, 'Successfully found!', {
+      dateRange: { from: query.from ?? null, to: query.to ?? null },
+      summary,
+      byRole,
+    });
   }
 
-  private buildDateFilter(startDate?: string, endDate?: string) {
-    if (!startDate && !endDate) return null;
+  private accumulate(
+    tx: { type: FinanceTransactionType; method: FinanceTransactionMethod | null; amount: number },
+    cb: {
+      onSale: (a: number) => void;
+      onSaleAddition: (a: number) => void;
+      onSaleCancel: (a: number) => void;
+      onCash: (a: number) => void;
+      onCard: (a: number) => void;
+      onRefundCash: (a: number) => void;
+      onRefundCard: (a: number) => void;
+    },
+  ) {
+    switch (tx.type) {
+      case FinanceTransactionType.SALE:         cb.onSale(tx.amount); break;
+      case FinanceTransactionType.SALE_ADDITION: cb.onSaleAddition(tx.amount); break;
+      case FinanceTransactionType.SALE_CANCEL:   cb.onSaleCancel(tx.amount); break;
+      case FinanceTransactionType.PREPAYMENT:
+      case FinanceTransactionType.PAYMENT:
+        if (tx.method === FinanceTransactionMethod.CASH) cb.onCash(tx.amount);
+        else if (tx.method === FinanceTransactionMethod.CARD) cb.onCard(tx.amount);
+        break;
+      case FinanceTransactionType.REFUND:
+        if (tx.method === FinanceTransactionMethod.CASH) cb.onRefundCash(tx.amount);
+        else if (tx.method === FinanceTransactionMethod.CARD) cb.onRefundCard(tx.amount);
+        break;
+    }
+  }
 
+  private buildDateFilter(from?: string, to?: string) {
+    if (!from && !to) return null;
     const toUtc = (dateStr: string, endOfDay = false) => {
       const d = new Date(dateStr);
       d.setUTCHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
       return d;
     };
-
     const range: any = {};
-    if (startDate) range.gte = toUtc(startDate);
-    if (endDate) range.lte = toUtc(endDate, true);
+    if (from) range.gte = toUtc(from);
+    if (to) range.lte = toUtc(to, true);
     return range;
-  }
-
-  private calcFinanceSummary(
-    transactions: { type: FinanceTransactionType; amount: number }[],
-  ) {
-    let sale = 0, saleAddition = 0, saleCancel = 0;
-    let prepayment = 0, payment = 0, refund = 0;
-
-    for (const tx of transactions ?? []) {
-      switch (tx.type) {
-        case FinanceTransactionType.SALE: sale += tx.amount; break;
-        case FinanceTransactionType.SALE_ADDITION: saleAddition += tx.amount; break;
-        case FinanceTransactionType.SALE_CANCEL: saleCancel += tx.amount; break;
-        case FinanceTransactionType.PREPAYMENT: prepayment += tx.amount; break;
-        case FinanceTransactionType.PAYMENT: payment += tx.amount; break;
-        case FinanceTransactionType.REFUND: refund += tx.amount; break;
-      }
-    }
-
-    const currentTotal = sale + saleAddition - saleCancel;
-    const paidAmount = prepayment + payment - refund;
-    return { currentTotal, paidAmount, debtAmount: currentTotal - paidAmount };
   }
 }
