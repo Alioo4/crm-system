@@ -444,24 +444,31 @@ export class OrderService {
         orderId: id,
       }));
 
-      const incomingSales = financeData.filter(
-        (p) => p.type === FinanceTransactionType.SALE,
-      );
+      if (financeData.length > 0) {
+        const incomingSaleCount = financeData.filter(
+          (p) => p.type === FinanceTransactionType.SALE,
+        ).length;
 
-      if (incomingSales.length > 1) {
-        throw new BadRequestException(
-          new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
-        );
-      }
+        if (incomingSaleCount > 1) {
+          throw new BadRequestException(
+            new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
+          );
+        }
 
-      if (incomingSales.length === 1) {
         const existingSale = await this.prisma.financeTransaction.findFirst({
           where: { orderId: id, type: FinanceTransactionType.SALE },
           select: { id: true },
         });
-        if (existingSale) {
+
+        if (incomingSaleCount === 1 && existingSale) {
           throw new BadRequestException(
             new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
+          );
+        }
+
+        if (incomingSaleCount === 0 && !existingSale) {
+          throw new BadRequestException(
+            new ResponseDto(false, 'Umumiy miqdor kiriting'),
           );
         }
       }
