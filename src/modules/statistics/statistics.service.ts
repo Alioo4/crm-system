@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { StatisticsQueryDto } from './dto/filter-query.dto';
+import { PaymentType, StatisticsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
 import { FinanceTransactionType, FinanceTransactionMethod } from '@prisma/client';
 
@@ -15,8 +15,39 @@ export class StatisticsService {
 
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
+    const SALE_TYPES = [
+      FinanceTransactionType.SALE,
+      FinanceTransactionType.SALE_ADDITION,
+      FinanceTransactionType.SALE_CANCEL,
+    ];
+
+    const where: any = {};
+    if (dateFilter) where.createdAt = dateFilter;
+
+    if (query.paymentType) {
+      const method =
+        query.paymentType === PaymentType.CARD
+          ? FinanceTransactionMethod.CARD
+          : FinanceTransactionMethod.CASH;
+      where.OR = [
+        { type: { in: SALE_TYPES } },
+        { method },
+      ];
+    }
+
+    if (query.assigneeId) {
+      where.order = {
+        OR: [
+          { managerId: query.assigneeId },
+          { zamirId: query.assigneeId },
+          { zavodId: query.assigneeId },
+          { ustId: query.assigneeId },
+        ],
+      };
+    }
+
     const transactions = await this.prisma.financeTransaction.findMany({
-      where: dateFilter ? { createdAt: dateFilter } : undefined,
+      where,
       select: {
         type: true,
         method: true,

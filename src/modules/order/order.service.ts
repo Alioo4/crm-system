@@ -444,6 +444,28 @@ export class OrderService {
         orderId: id,
       }));
 
+      const incomingSales = financeData.filter(
+        (p) => p.type === FinanceTransactionType.SALE,
+      );
+
+      if (incomingSales.length > 1) {
+        throw new BadRequestException(
+          new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
+        );
+      }
+
+      if (incomingSales.length === 1) {
+        const existingSale = await this.prisma.financeTransaction.findFirst({
+          where: { orderId: id, type: FinanceTransactionType.SALE },
+          select: { id: true },
+        });
+        if (existingSale) {
+          throw new BadRequestException(
+            new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
+          );
+        }
+      }
+
       if (status === Status.CANCEL) {
         const REVERSAL_MAP: Partial<
           Record<FinanceTransactionType, FinanceTransactionType>
