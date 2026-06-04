@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { Role } from '@prisma/client';
+import { Role, UserStatus } from '@prisma/client';
 import { Request } from 'express';
 import { PrismaService } from 'src/modules/prisma/prisma.service';
 
@@ -38,18 +38,28 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('No token provided');
     }
 
+    let payload: any;
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
+      payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_SECRET,
       });
-
-      request.user = payload;
-
-      if (payload.role === Role.ADMIN || payload.role === Role.MANAGER) {
-        return true;
-      }
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid token');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { status: true },
+    });
+
+    if (!user || user.status === UserStatus.DELETED) {
+      throw new ForbiddenException('Your account has been deactivated');
+    }
+
+    request.user = payload;
+
+    if (payload.role === Role.ADMIN || payload.role === Role.MANAGER) {
+      return true;
     }
 
     const path = request.path;

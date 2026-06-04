@@ -41,6 +41,7 @@ export class OrderService {
       workerArrivalDate,
       status,
       hashtagIds,
+      payments,
       ...rest
     } = createOrderDto;
 
@@ -98,6 +99,21 @@ export class OrderService {
           : undefined,
       },
     });
+
+    const financeData = (payments || []).map((p) => ({
+      type: p.paymentType as unknown as FinanceTransactionType,
+      method: p.paymentMethod as unknown as FinanceTransactionMethod | null,
+      amount: p.amount,
+      comment: p.comment,
+      createdById: sub,
+      orderId: order.id,
+    }));
+
+    await this.validatePayments(financeData);
+
+    if (financeData.length > 0) {
+      await this.prisma.financeTransaction.createMany({ data: financeData });
+    }
 
     return new ResponseDto(true, 'Order created successfully', order);
   }
@@ -444,34 +460,7 @@ export class OrderService {
         orderId: id,
       }));
 
-      if (financeData.length > 0) {
-        const incomingSaleCount = financeData.filter(
-          (p) => p.type === FinanceTransactionType.SALE,
-        ).length;
-
-        if (incomingSaleCount > 1) {
-          throw new BadRequestException(
-            new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
-          );
-        }
-
-        const existingSale = await this.prisma.financeTransaction.findFirst({
-          where: { orderId: id, type: FinanceTransactionType.SALE },
-          select: { id: true },
-        });
-
-        if (incomingSaleCount === 1 && existingSale) {
-          throw new BadRequestException(
-            new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
-          );
-        }
-
-        if (incomingSaleCount === 0 && !existingSale) {
-          throw new BadRequestException(
-            new ResponseDto(false, 'Umumiy miqdor kiriting'),
-          );
-        }
-      }
+      await this.validatePayments(financeData, id);
 
       if (status === Status.CANCEL) {
         const REVERSAL_MAP: Partial<
@@ -840,6 +829,42 @@ export class OrderService {
     });
 
     return new ResponseDto(true, 'My orders found', orders);
+  }
+
+  private async validatePayments(
+    financeData: { type: FinanceTransactionType }[],
+    orderId?: string,
+  ): Promise<void> {
+    if (financeData.length === 0) return;
+
+    const incomingSaleCount = financeData.filter(
+      (p) => p.type === FinanceTransactionType.SALE,
+    ).length;
+
+    if (incomingSaleCount > 1) {
+      throw new BadRequestException(
+        new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
+      );
+    }
+
+    const existingSale = orderId
+      ? await this.prisma.financeTransaction.findFirst({
+          where: { orderId, type: FinanceTransactionType.SALE },
+          select: { id: true },
+        })
+      : null;
+
+    if (incomingSaleCount === 1 && existingSale) {
+      throw new BadRequestException(
+        new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
+      );
+    }
+
+    if (incomingSaleCount === 0 && !existingSale) {
+      throw new BadRequestException(
+        new ResponseDto(false, 'Umumiy miqdor kiriting'),
+      );
+    }
   }
 
   private calcFinanceSummary(

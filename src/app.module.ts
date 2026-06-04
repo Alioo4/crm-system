@@ -13,6 +13,7 @@ import { HistoryModule } from './modules/history/history.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
 import { OrderCurrencyModule } from './modules/order-currency/order-currency.module';
 import { HashtagModule } from './modules/hashtag/hashtag.module';
+import { FinanceModule } from './modules/finance/finance.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { HashtagModule } from './modules/hashtag/hashtag.module';
     StatisticsModule,
     OrderCurrencyModule,
     HashtagModule,
+    FinanceModule,
   ],
   controllers: [],
   providers: [

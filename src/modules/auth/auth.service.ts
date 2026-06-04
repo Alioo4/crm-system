@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Response } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -7,6 +7,7 @@ import { ResponseDto } from 'src/common/types';
 import { LoginDto } from './dto/login.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ConfigService } from '@nestjs/config';
+import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -18,11 +19,15 @@ export class AuthService {
   async login(userData: LoginDto) {
     const findUser = await this.prisma.user.findUnique({
       where: { phone: userData.phone },
-      select: { id: true, password: true, role: true, name: true, phone: true, createdAt: true },
+      select: { id: true, password: true, role: true, name: true, phone: true, createdAt: true, status: true },
     });
 
     if (!findUser) {
       throw new BadRequestException(new ResponseDto(false, 'User not found'));
+    }
+
+    if (findUser.status === UserStatus.DELETED) {
+      throw new ForbiddenException(new ResponseDto(false, 'Your account has been deactivated'));
     }
 
     const isPasswordValid: boolean = await this.checkPass(
@@ -78,11 +83,14 @@ export class AuthService {
 
   async findAll() {
     const users = await this.prisma.user.findMany({
+      where: { status: UserStatus.ACTIVE },
       select: {
         id: true,
         name: true,
         phone: true,
         role: true,
+        status: true,
+        createdAt: true,
       },
     });
 
@@ -90,7 +98,17 @@ export class AuthService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        role: true,
+        status: true,
+        createdAt: true,
+      },
+    });
 
     return new ResponseDto(true, 'Successfully find!!!', user);
   }
@@ -138,15 +156,19 @@ export class AuthService {
   async deleteUser(id: string) {
     const findUser = await this.prisma.user.findUnique({
       where: { id },
+      select: { id: true, status: true },
     });
 
-    if (!findUser) {
+    if (!findUser || findUser.status === UserStatus.DELETED) {
       throw new BadRequestException(
         new ResponseDto(false, 'User not found!!!'),
       );
     }
 
-    await this.prisma.user.delete({ where: { id } });
+    await this.prisma.user.update({
+      where: { id },
+      data: { status: UserStatus.DELETED },
+    });
 
     return new ResponseDto(true, 'User deleted');
   }

@@ -13,10 +13,11 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  phone    String  @unique @db.VarChar(16)
-  name     String? @db.VarChar(128)
-  password String  @db.VarChar(128)
-  role     Role    @default(MANAGER)
+  phone    String     @unique @db.VarChar(16)
+  name     String?    @db.VarChar(128)
+  password String     @db.VarChar(128)
+  role     Role       @default(MANAGER)
+  status   UserStatus @default(ACTIVE)
 
   financeTransactions FinanceTransaction[]
 }
@@ -228,6 +229,11 @@ enum Role {
   ZAMIR
   ZAVOD
   USTANOVCHIK
+}
+
+enum UserStatus {
+  ACTIVE
+  DELETED
 }
 
 enum Status {

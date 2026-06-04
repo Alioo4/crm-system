@@ -8,7 +8,10 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { PaymentDto } from './update-order.dto';
 
 export enum Status {
   MANAGER = 'MANAGER',
@@ -129,6 +132,19 @@ export class CreateOrderDto {
   @IsArray()
   @IsUUID('4', { each: true })
   hashtagIds?: string[];
+
+  @ApiPropertyOptional({
+    type: [PaymentDto],
+    example: [
+      { amount: 1200000, paymentMethod: 'CASH', paymentType: 'SALE' },
+      { amount: 300000, paymentMethod: 'CASH', paymentType: 'PREPAYMENT', comment: 'Avans' },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentDto)
+  payments?: PaymentDto[];
 }
 
 export class ResponseOrderPosDto<T = any> {
