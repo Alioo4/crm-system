@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaymentType, StatisticsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
 import { FinanceTransactionType, FinanceTransactionMethod } from '@prisma/client';
+import { MSG } from 'src/common/i18n/messages';
 
 @Injectable()
 export class StatisticsService {
@@ -10,7 +11,7 @@ export class StatisticsService {
 
   async findAll(role: string, query: StatisticsQueryDto) {
     if (role !== 'ADMIN') {
-      throw new ForbiddenException('Permission denied');
+      throw new ForbiddenException(MSG.PERMISSION_DENIED);
     }
 
     const dateFilter = this.buildDateFilter(query.from, query.to);

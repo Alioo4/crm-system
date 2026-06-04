@@ -3,6 +3,7 @@ import { CreateRegionDto } from './dto/create-region.dto';
 import { UpdateRegionDto } from './dto/update-region.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResponseDto } from 'src/common/types';
+import { MSG } from 'src/common/i18n/messages';
 
 @Injectable()
 export class RegionsService {
@@ -13,9 +14,7 @@ export class RegionsService {
     });
 
     if (isExist !== 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This name already exist!!!'),
-      );
+      throw new BadRequestException(MSG.NAME_ALREADY_EXISTS);
     }
 
     const region = await this.prisma.region.create({
@@ -41,9 +40,7 @@ export class RegionsService {
     });
 
     if (!isExist) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This region not found!!!'),
-      );
+      throw new BadRequestException(MSG.REGION_NOT_FOUND);
     }
 
     return new ResponseDto(true, 'Successfully found!!!', isExist);
@@ -55,9 +52,7 @@ export class RegionsService {
     });
 
     if (isExist === 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This region not found!!!'),
-      );
+      throw new BadRequestException(MSG.REGION_NOT_FOUND);
     }
 
     await this.prisma.region.update({
@@ -79,9 +74,7 @@ export class RegionsService {
     });
 
     if (isExist === 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This region not found!!!'),
-      );
+      throw new BadRequestException(MSG.REGION_NOT_FOUND);
     }
 
     const relatedOrders = await this.prisma.order.findMany({

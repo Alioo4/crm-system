@@ -7,6 +7,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { IResponse, ResponseDto } from 'src/common/types';
+import { MSG } from 'src/common/i18n/messages';
 import { HistoryService } from '../history/history.service';
 import {
   FinanceTransactionMethod,
@@ -57,13 +58,13 @@ export class OrderService {
       ? await this.prisma.region.findUnique({ where: { id: regionId } })
       : null;
     if (regionId && !region)
-      throw new NotFoundException(new ResponseDto(false, 'Region not found'));
+      throw new NotFoundException(MSG.REGION_NOT_FOUND);
 
     const social = socialId
       ? await this.prisma.social.findUnique({ where: { id: socialId } })
       : null;
     if (socialId && !social)
-      throw new NotFoundException(new ResponseDto(false, 'Social not found'));
+      throw new NotFoundException(MSG.SOCIAL_NOT_FOUND);
 
     const orderStatus = orderStatusId
       ? await this.prisma.orderStatus.findUnique({
@@ -71,9 +72,7 @@ export class OrderService {
         })
       : null;
     if (orderStatusId && !orderStatus)
-      throw new NotFoundException(
-        new ResponseDto(false, 'Order status not found'),
-      );
+      throw new NotFoundException(MSG.ORDER_STATUS_NOT_FOUND);
 
     const safeWorkerArrivalDate =
       typeof workerArrivalDate === 'string'
@@ -282,7 +281,7 @@ export class OrderService {
     });
 
     if (!order) {
-      throw new BadRequestException(new ResponseDto(false, 'Order not found'));
+      throw new BadRequestException(MSG.ORDER_NOT_FOUND);
     }
 
     return new ResponseDto(true, 'Order found', {
@@ -333,7 +332,7 @@ export class OrderService {
     });
 
     if (!findOrder) {
-      throw new BadRequestException(new ResponseDto(false, 'Order not found'));
+      throw new BadRequestException(MSG.ORDER_NOT_FOUND);
     }
 
     if (
@@ -568,12 +567,7 @@ export class OrderService {
 
       return new ResponseDto(true, 'Order updated successfully');
     } else {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'You do not have permission to update this order',
-        ),
-      );
+      throw new BadRequestException(MSG.ORDER_UPDATE_FORBIDDEN);
     }
   }
 
@@ -589,7 +583,7 @@ export class OrderService {
     ]);
 
     if (!findOrder || !user) {
-      throw new BadRequestException(new ResponseDto(false, 'Order not found'));
+      throw new BadRequestException(MSG.ORDER_NOT_FOUND);
     }
 
     const relatedOrders = await this.prisma.roomMeasurement.findMany({
@@ -632,7 +626,7 @@ export class OrderService {
     });
 
     if (!order) {
-      throw new NotFoundException(new ResponseDto(false, 'Order not found'));
+      throw new NotFoundException(MSG.ORDER_NOT_FOUND);
     }
 
     if (role === Status.ZAMIR && !order.zamirId) {
@@ -657,19 +651,9 @@ export class OrderService {
         },
       });
     } else if (order.zavodId || order.ustId || order.zamirId) {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'This order is already assigned to another user',
-        ),
-      );
+      throw new BadRequestException(MSG.ORDER_ALREADY_ASSIGNED);
     } else {
-      throw new BadRequestException(
-        new ResponseDto(
-          false,
-          'You do not have permission to assign this order',
-        ),
-      );
+      throw new BadRequestException(MSG.ORDER_ASSIGN_FORBIDDEN);
     }
   }
 
@@ -688,7 +672,7 @@ export class OrderService {
     });
 
     if (orders.length === 0) {
-      throw new NotFoundException(new ResponseDto(false, 'Orders not found'));
+      throw new NotFoundException(MSG.ORDERS_NOT_FOUND);
     }
 
     const updatePromises: Promise<any>[] = [];
@@ -718,19 +702,9 @@ export class OrderService {
           }),
         );
       } else if (zamirId || ustId || zavodId) {
-        throw new BadRequestException(
-          new ResponseDto(
-            false,
-            `Order ${id} is already assigned to another user`,
-          ),
-        );
+        throw new BadRequestException(MSG.ORDER_ALREADY_ASSIGNED);
       } else {
-        throw new BadRequestException(
-          new ResponseDto(
-            false,
-            `You do not have permission to assign order ${id}`,
-          ),
-        );
+        throw new BadRequestException(MSG.ORDER_ASSIGN_FORBIDDEN);
       }
     }
 
@@ -753,7 +727,7 @@ export class OrderService {
       },
     });
     if (orders.length === 0) {
-      throw new NotFoundException(new ResponseDto(false, 'Orders not found'));
+      throw new NotFoundException(MSG.ORDERS_NOT_FOUND);
     }
     const updatePromises: Promise<any>[] = [];
     for (const order of orders) {
@@ -784,16 +758,9 @@ export class OrderService {
         (ustId && ustId !== userId) ||
         (zavodId && zavodId !== userId)
       ) {
-        throw new BadRequestException(
-          new ResponseDto(false, `Order ${id} is assigned to another user`),
-        );
+        throw new BadRequestException(MSG.ORDER_ALREADY_ASSIGNED);
       } else {
-        throw new BadRequestException(
-          new ResponseDto(
-            false,
-            `You do not have permission to unassign order ${id}`,
-          ),
-        );
+        throw new BadRequestException(MSG.ORDER_UNASSIGN_FORBIDDEN);
       }
     }
     await Promise.all(updatePromises);
@@ -842,9 +809,7 @@ export class OrderService {
     ).length;
 
     if (incomingSaleCount > 1) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
-      );
+      throw new BadRequestException(MSG.SALE_ALREADY_EXISTS);
     }
 
     const existingSale = orderId
@@ -855,15 +820,11 @@ export class OrderService {
       : null;
 
     if (incomingSaleCount === 1 && existingSale) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting'),
-      );
+      throw new BadRequestException(MSG.SALE_ALREADY_EXISTS);
     }
 
     if (incomingSaleCount === 0 && !existingSale) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'Umumiy miqdor kiriting'),
-      );
+      throw new BadRequestException(MSG.SALE_REQUIRED);
     }
   }
 

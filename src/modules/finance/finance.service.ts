@@ -4,6 +4,7 @@ import { ResponseDto } from 'src/common/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { FinanceDateRangeDto } from './dto/finance-date-range.dto';
 import { PaymentsQueryDto } from './dto/payments-query.dto';
+import { MSG } from 'src/common/i18n/messages';
 
 const PAYMENT_TYPES = [
   FinanceTransactionType.PREPAYMENT,
@@ -135,7 +136,7 @@ export class FinanceService {
   // ─── Private helpers ──────────────────────────────────────────────────────────
 
   private checkAdmin(role: string) {
-    if (role !== 'ADMIN') throw new ForbiddenException('Permission denied');
+    if (role !== 'ADMIN') throw new ForbiddenException(MSG.PERMISSION_DENIED);
   }
 
   private calcSales(txs: TxForSales[]) {

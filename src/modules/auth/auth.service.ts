@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ConfigService } from '@nestjs/config';
 import { UserStatus } from '@prisma/client';
+import { MSG } from 'src/common/i18n/messages';
 
 @Injectable()
 export class AuthService {
@@ -23,11 +24,11 @@ export class AuthService {
     });
 
     if (!findUser) {
-      throw new BadRequestException(new ResponseDto(false, 'User not found'));
+      throw new BadRequestException(MSG.USER_NOT_FOUND);
     }
 
     if (findUser.status === UserStatus.DELETED) {
-      throw new ForbiddenException(new ResponseDto(false, 'Your account has been deactivated'));
+      throw new ForbiddenException(MSG.ACCOUNT_DEACTIVATED);
     }
 
     const isPasswordValid: boolean = await this.checkPass(
@@ -35,9 +36,7 @@ export class AuthService {
       findUser.password,
     );
     if (!isPasswordValid) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'Password is incorrect'),
-      );
+      throw new BadRequestException(MSG.PASSWORD_INCORRECT);
     }
 
     const accessToken: string = await this.getToken(findUser.id, findUser.role);
@@ -58,9 +57,7 @@ export class AuthService {
     });
 
     if (isExist) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'User with this phone already exists'),
-      );
+      throw new BadRequestException(MSG.PHONE_ALREADY_EXISTS);
     }
 
     const hashPass = await this.hashing(userData.password);
@@ -123,15 +120,11 @@ export class AuthService {
     });
 
     if (findPhone) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This phone already exist!!!'),
-      );
+      throw new BadRequestException(MSG.PHONE_ALREADY_EXISTS);
     }
 
     if (!findUser) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'User not found!!!'),
-      );
+      throw new BadRequestException(MSG.USER_NOT_FOUND);
     }
 
     const data: any = {
@@ -160,9 +153,7 @@ export class AuthService {
     });
 
     if (!findUser || findUser.status === UserStatus.DELETED) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'User not found!!!'),
-      );
+      throw new BadRequestException(MSG.USER_NOT_FOUND);
     }
 
     await this.prisma.user.update({

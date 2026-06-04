@@ -3,6 +3,7 @@ import { CreateSocialDto } from './dto/create-social.dto';
 import { UpdateSocialDto } from './dto/update-social.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResponseDto } from 'src/common/types';
+import { MSG } from 'src/common/i18n/messages';
 
 @Injectable()
 export class SocialService {
@@ -14,9 +15,7 @@ export class SocialService {
     });
 
     if (isExist !== 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This name already exist!!!'),
-      );
+      throw new BadRequestException(MSG.NAME_ALREADY_EXISTS);
     }
 
     const social = await this.prisma.social.create({
@@ -42,9 +41,7 @@ export class SocialService {
     });
 
     if (!isExist) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This social not found!!!'),
-      );
+      throw new BadRequestException(MSG.SOCIAL_NOT_FOUND);
     }
 
     return new ResponseDto(true, 'Sucessfully found!!!', isExist);
@@ -56,9 +53,7 @@ export class SocialService {
     });
 
     if (isExist === 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This social not found!!!'),
-      );
+      throw new BadRequestException(MSG.SOCIAL_NOT_FOUND);
     }
 
     await this.prisma.social.update({
@@ -80,9 +75,7 @@ export class SocialService {
     });
 
     if (isExist === 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'This social not found!!!'),
-      );
+      throw new BadRequestException(MSG.SOCIAL_NOT_FOUND);
     }
 
     const relatedOrders = await this.prisma.order.findMany({

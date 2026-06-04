@@ -3,6 +3,7 @@ import { CreateOrderStatusDto } from './dto/create-order-status.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { IResponse, ResponseDto } from 'src/common/types';
+import { MSG } from 'src/common/i18n/messages';
 
 @Injectable()
 export class OrderStatusService {
@@ -13,9 +14,7 @@ export class OrderStatusService {
     });
 
     if (isExist) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'Status already exists'),
-      );
+      throw new BadRequestException(MSG.ORDER_STATUS_EXISTS);
     }
 
     const status = await this.prisma.orderStatus.create({
@@ -49,9 +48,7 @@ export class OrderStatusService {
     });
 
     if (!findStatus) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'Status not found!!!'),
-      );
+      throw new BadRequestException(MSG.ORDER_STATUS_NOT_FOUND);
     }
 
     return new ResponseDto(true, 'Status successfully found!', findStatus);
@@ -64,9 +61,7 @@ export class OrderStatusService {
     const status = await this.prisma.orderStatus.count({ where: { id } });
 
     if (status === 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'Status not found!!!'),
-      );
+      throw new BadRequestException(MSG.ORDER_STATUS_NOT_FOUND);
     }
 
     await this.prisma.orderStatus.update({
@@ -81,9 +76,7 @@ export class OrderStatusService {
     const status = await this.prisma.orderStatus.count({ where: { id } });
 
     if (status === 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'Status not found!!!'),
-      );
+      throw new BadRequestException(MSG.ORDER_STATUS_NOT_FOUND);
     }
 
     const relatedOrders = await this.prisma.order.findMany({

@@ -6,6 +6,7 @@ import {
 import { ResponseDto } from 'src/common/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCurrencyOrderDto, UpdateOrderCurrencyDto } from './dto';
+import { MSG } from 'src/common/i18n/messages';
 
 @Injectable()
 export class OrderCurrencyService {
@@ -17,9 +18,7 @@ export class OrderCurrencyService {
     });
 
     if (orderExists === 0) {
-      throw new NotFoundException(
-        new ResponseDto(false, 'Order ID not found!'),
-      );
+      throw new NotFoundException(MSG.ORDER_NOT_FOUND);
     }
 
     const created = await this.prisma.currencyOrder.create({
@@ -49,9 +48,7 @@ export class OrderCurrencyService {
     });
 
     if (!item) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'CurrencyOrder not found'),
-      );
+      throw new BadRequestException(MSG.CURRENCY_ORDER_NOT_FOUND);
     }
 
     return new ResponseDto(true, 'CurrencyOrder successfully found', item);
@@ -61,9 +58,7 @@ export class OrderCurrencyService {
     const exists = await this.prisma.currencyOrder.count({ where: { id } });
 
     if (exists === 0) {
-      throw new NotFoundException(
-        new ResponseDto(false, 'CurrencyOrder not found'),
-      );
+      throw new NotFoundException(MSG.CURRENCY_ORDER_NOT_FOUND);
     }
 
     if (updateDto.orederId) {
@@ -72,9 +67,7 @@ export class OrderCurrencyService {
       });
 
       if (orderExists === 0) {
-        throw new NotFoundException(
-          new ResponseDto(false, 'Order ID not found'),
-        );
+        throw new NotFoundException(MSG.ORDER_NOT_FOUND);
       }
     }
 
@@ -96,9 +89,7 @@ export class OrderCurrencyService {
     const exists = await this.prisma.currencyOrder.count({ where: { id } });
 
     if (exists === 0) {
-      throw new BadRequestException(
-        new ResponseDto(false, 'CurrencyOrder not found'),
-      );
+      throw new BadRequestException(MSG.CURRENCY_ORDER_NOT_FOUND);
     }
 
     await this.prisma.currencyOrder.delete({ where: { id } });

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateHistoryDto } from './dto/create-history.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResponseDto } from 'src/common/types';
+import { MSG } from 'src/common/i18n/messages';
 
 @Injectable()
 export class HistoryService {
@@ -108,9 +109,7 @@ export class HistoryService {
     const data = { ...isExist, roomMeasurement: rooms };
 
     if (!isExist) {
-      throw new NotFoundException(
-        new ResponseDto(false, 'This history not found!!!'),
-      );
+      throw new NotFoundException(MSG.HISTORY_NOT_FOUND);
     }
 
     return new ResponseDto(true, 'Successfully find!!!', data);
