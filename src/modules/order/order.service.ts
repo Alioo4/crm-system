@@ -824,11 +824,12 @@ export class OrderService {
   }
 
   private async validatePayments(
-    financeData: { type: FinanceTransactionType }[],
+    financeData: { type: FinanceTransactionType; amount: number }[],
     orderId?: string,
   ): Promise<void> {
     if (financeData.length === 0) return;
 
+    // ── 1. Bir so'rovda ikki SALE bo'lmasin ───────────────────────────────────
     const incomingSaleCount = financeData.filter(
       (p) => p.type === FinanceTransactionType.SALE,
     ).length;
@@ -837,19 +838,46 @@ export class OrderService {
       throw new BadRequestException(MSG.SALE_ALREADY_EXISTS);
     }
 
-    const existingSale = orderId
-      ? await this.prisma.financeTransaction.findFirst({
-          where: { orderId, type: FinanceTransactionType.SALE },
-          select: { id: true },
+    // ── Mavjud transaksiyalarni bir marta olish ────────────────────────────────
+    const existing = orderId
+      ? await this.prisma.financeTransaction.findMany({
+          where: { orderId },
+          select: { type: true, amount: true },
         })
-      : null;
+      : [];
 
-    if (incomingSaleCount === 1 && existingSale) {
+    const hasSaleInDB = existing.some(
+      (tx) => tx.type === FinanceTransactionType.SALE,
+    );
+
+    // ── 2. SALE constraint ─────────────────────────────────────────────────────
+    if (incomingSaleCount === 1 && hasSaleInDB) {
       throw new BadRequestException(MSG.SALE_ALREADY_EXISTS);
     }
 
-    if (incomingSaleCount === 0 && !existingSale) {
+    if (incomingSaleCount === 0 && !hasSaleInDB) {
       throw new BadRequestException(MSG.SALE_REQUIRED);
+    }
+
+    // ── 3. To'lov umumiy summadan oshmasin ─────────────────────────────────────
+    const allTxs = [...existing, ...financeData];
+
+    const netSale = allTxs.reduce((sum, tx) => {
+      if (tx.type === FinanceTransactionType.SALE)          return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.SALE_ADDITION) return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.SALE_CANCEL)   return sum - tx.amount;
+      return sum;
+    }, 0);
+
+    const paid = allTxs.reduce((sum, tx) => {
+      if (tx.type === FinanceTransactionType.PREPAYMENT) return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.PAYMENT)    return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.REFUND)     return sum - tx.amount;
+      return sum;
+    }, 0);
+
+    if (paid > netSale) {
+      throw new BadRequestException(MSG.PAYMENT_EXCEEDS_SALE);
     }
   }
 

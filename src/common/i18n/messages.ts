@@ -14,8 +14,9 @@ export const MSG = {
   ORDER_UNASSIGN_FORBIDDEN: 'ORDER_UNASSIGN_FORBIDDEN',
 
   // Finance
-  SALE_ALREADY_EXISTS: 'SALE_ALREADY_EXISTS',
-  SALE_REQUIRED:       'SALE_REQUIRED',
+  SALE_ALREADY_EXISTS:    'SALE_ALREADY_EXISTS',
+  SALE_REQUIRED:          'SALE_REQUIRED',
+  PAYMENT_EXCEEDS_SALE:   'PAYMENT_EXCEEDS_SALE',
 
   // References
   REGION_NOT_FOUND:       'REGION_NOT_FOUND',
@@ -51,8 +52,9 @@ const uz: Translations = {
   ORDER_ASSIGN_FORBIDDEN:   "Buyurtmani biriktirish uchun ruxsatingiz yo'q",
   ORDER_UNASSIGN_FORBIDDEN: "Buyurtmadan ajratish uchun ruxsatingiz yo'q",
 
-  SALE_ALREADY_EXISTS: "Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting",
-  SALE_REQUIRED:       "Umumiy miqdor kiriting",
+  SALE_ALREADY_EXISTS:  "Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting",
+  SALE_REQUIRED:        "Umumiy miqdor kiriting",
+  PAYMENT_EXCEEDS_SALE: "To'lov miqdori umumiy savdo summasidan oshib ketmoqda",
 
   REGION_NOT_FOUND:         "Hudud topilmadi",
   SOCIAL_NOT_FOUND:         "Ijtimoiy tarmoq topilmadi",
@@ -82,8 +84,9 @@ const ru: Translations = {
   ORDER_ASSIGN_FORBIDDEN:   "У вас нет прав для назначения заказа",
   ORDER_UNASSIGN_FORBIDDEN: "У вас нет прав для снятия назначения заказа",
 
-  SALE_ALREADY_EXISTS: "Общая сумма продажи уже введена, введите другой тип",
-  SALE_REQUIRED:       "Введите общую сумму",
+  SALE_ALREADY_EXISTS:  "Общая сумма продажи уже введена, введите другой тип",
+  SALE_REQUIRED:        "Введите общую сумму",
+  PAYMENT_EXCEEDS_SALE: "Сумма оплаты превышает общую сумму продажи",
 
   REGION_NOT_FOUND:         "Регион не найден",
   SOCIAL_NOT_FOUND:         "Социальная сеть не найдена",
