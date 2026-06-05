@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsDateString, IsOptional, IsUUID } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class HandoverQueryDto {
   @ApiPropertyOptional({ example: '2026-06-01' })
@@ -33,4 +33,18 @@ export class HandoverQueryDto {
   @IsBoolean()
   @IsOptional()
   pending?: boolean;
+
+  @ApiPropertyOptional({ example: 1 })
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  page?: number = 1;
+
+  @ApiPropertyOptional({ example: 20 })
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  limit?: number = 20;
 }

@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsDateString, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class FinanceDateRangeDto {
   @ApiPropertyOptional({ example: '2026-05-01' })
@@ -19,4 +20,18 @@ export class FinanceDateRangeDto {
   @IsUUID()
   @IsOptional()
   userId?: string;
+
+  @ApiPropertyOptional({ example: 1, description: 'Sahifa raqami (1 dan boshlanadi)' })
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  page?: number = 1;
+
+  @ApiPropertyOptional({ example: 20, description: 'Sahifadagi elementlar soni' })
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  limit?: number = 20;
 }

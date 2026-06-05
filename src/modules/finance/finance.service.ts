@@ -57,36 +57,58 @@ export class FinanceService {
   async getPayments(role: string, query: PaymentsQueryDto) {
     this.checkAdmin(role);
 
+    const page  = query.page  ?? 1;
+    const limit = query.limit ?? 20;
+    const skip  = (page - 1) * limit;
+
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
-    const transactions = await this.prisma.financeTransaction.findMany({
-      where: {
-        ...(dateFilter && { createdAt: dateFilter }),
-        type: { in: PAYMENT_TYPES },
-        ...(query.userId && { createdById: query.userId }),
-      },
-      select: {
-        id: true,
-        type: true,
-        method: true,
-        amount: true,
-        createdAt: true,
-        orderId: true,
-        createdBy: { select: { id: true, name: true, role: true } },
-        order: { select: { id: true, name: true, phone: true } },
-      },
-      orderBy: { createdAt: 'asc' },
+    const where = {
+      ...(dateFilter && { createdAt: dateFilter }),
+      type: { in: PAYMENT_TYPES },
+      ...(query.userId && { createdById: query.userId }),
+    };
+
+    // ── Summary: barcha transaksiyalardan kichik select ───────────────────────
+    const allTxs = await this.prisma.financeTransaction.findMany({
+      where,
+      select: { orderId: true, type: true, method: true, amount: true },
     });
 
-    const items = this.groupPaymentsByOrder(transactions);
-    const summary = this.calcPaymentsSummary(items);
+    const allOrderIds  = [...new Set(allTxs.map((t) => t.orderId))];
+    const total        = allOrderIds.length;
+    const pagedOrderIds = allOrderIds.slice(skip, skip + limit);
 
-    return new ResponseDto(true, 'Successfully found!', {
-      dateRange: { from: query.from ?? null, to: query.to ?? null },
-      ...(query.userId && { filter: { userId: query.userId } }),
-      summary,
-      items,
-    });
+    // ── Items: faqat shu sahifadagi orderlar uchun to'liq ma'lumot ────────────
+    const pagedTxs = pagedOrderIds.length > 0
+      ? await this.prisma.financeTransaction.findMany({
+          where: { ...where, orderId: { in: pagedOrderIds } },
+          select: {
+            id: true, type: true, method: true, amount: true,
+            createdAt: true, orderId: true,
+            createdBy: { select: { id: true, name: true, role: true } },
+            order:     { select: { id: true, name: true, phone: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        })
+      : [];
+
+    const items   = this.groupPaymentsByOrder(pagedTxs);
+    // Summary barcha transaksiyalardan hisoblanadi (sahifa emas)
+    const allItems = this.calcSummaryFromTxList(allTxs);
+    const summary  = allItems;
+
+    return new ResponseDto(
+      true,
+      'Successfully found!',
+      {
+        dateRange: { from: query.from ?? null, to: query.to ?? null },
+        ...(query.userId && { filter: { userId: query.userId } }),
+        summary,
+        items,
+      },
+      { page, limit, total, totalPages: Math.ceil(total / limit) },
+    );
   }
 
   // ─── 3. Debt Orders ───────────────────────────────────────────────────────────
@@ -94,16 +116,16 @@ export class FinanceService {
   async getDebtOrders(role: string, query: FinanceDateRangeDto) {
     this.checkAdmin(role);
 
+    const page  = query.page  ?? 1;
+    const limit = query.limit ?? 20;
+    const skip  = (page - 1) * limit;
+
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
     const orders = await this.prisma.order.findMany({
       where: dateFilter ? { createdAt: dateFilter } : undefined,
       select: {
-        id: true,
-        name: true,
-        phone: true,
-        status: true,
-        createdAt: true,
+        id: true, name: true, phone: true, status: true, createdAt: true,
         managerId: true, managerName: true,
         zamirId: true,   zamirName: true,
         zavodId: true,   zavodName: true,
@@ -112,31 +134,40 @@ export class FinanceService {
           select: { type: true, amount: true, createdById: true },
         },
       },
+      orderBy: { createdAt: 'desc' },
     });
 
-    const debtItems: ReturnType<typeof this.buildDebtItem>[] = [];
+    // ── Barcha qarzdor orderlar (summary uchun) ───────────────────────────────
+    const allDebtItems: ReturnType<typeof this.buildDebtItem>[] = [];
     let totalOrderAmount = 0;
-    let totalPaidAmount = 0;
+    let totalPaidAmount  = 0;
 
     for (const order of orders) {
       const item = this.buildDebtItem(order);
       if (item.debtAmount <= 0) continue;
-
       totalOrderAmount += item.orderAmount;
-      totalPaidAmount += item.paidAmount;
-      debtItems.push(item);
+      totalPaidAmount  += item.paidAmount;
+      allDebtItems.push(item);
     }
 
-    return new ResponseDto(true, 'Successfully found!', {
-      dateRange: { from: query.from ?? null, to: query.to ?? null },
-      summary: {
-        ordersCount: debtItems.length,
-        totalOrderAmount,
-        totalPaidAmount,
-        totalDebt: totalOrderAmount - totalPaidAmount,
+    const total     = allDebtItems.length;
+    const pagedItems = allDebtItems.slice(skip, skip + limit);
+
+    return new ResponseDto(
+      true,
+      'Successfully found!',
+      {
+        dateRange: { from: query.from ?? null, to: query.to ?? null },
+        summary: {
+          ordersCount:      total,
+          totalOrderAmount,
+          totalPaidAmount,
+          totalDebt: totalOrderAmount - totalPaidAmount,
+        },
+        items: pagedItems,
       },
-      items: debtItems,
-    });
+      { page, limit, total, totalPages: Math.ceil(total / limit) },
+    );
   }
 
   // ─── Private helpers ──────────────────────────────────────────────────────────
@@ -250,13 +281,44 @@ export class FinanceService {
   private calcPaymentsSummary(
     items: { cash: number; card: number; refundCash: number; refundCard: number }[],
   ) {
-    const cash      = items.reduce((s, i) => s + i.cash,      0);
-    const card      = items.reduce((s, i) => s + i.card,      0);
+    const cash       = items.reduce((s, i) => s + i.cash,       0);
+    const card       = items.reduce((s, i) => s + i.card,       0);
     const refundCash = items.reduce((s, i) => s + i.refundCash, 0);
     const refundCard = items.reduce((s, i) => s + i.refundCard, 0);
 
     return {
       ordersCount: items.length,
+      cash,
+      card,
+      refundCash,
+      refundCard,
+      totalReceived: cash + card - refundCash - refundCard,
+    };
+  }
+
+  // Barcha transaksiyalar ro'yxatidan to'lov summarysi (pagination uchun)
+  private calcSummaryFromTxList(
+    txs: { type: FinanceTransactionType; method: FinanceTransactionMethod | null; amount: number; orderId: string }[],
+  ) {
+    let cash = 0, card = 0, refundCash = 0, refundCard = 0;
+    const orderIds = new Set<string>();
+
+    for (const tx of txs) {
+      orderIds.add(tx.orderId);
+      const isCash = tx.method === FinanceTransactionMethod.CASH;
+      const isCard = tx.method === FinanceTransactionMethod.CARD;
+
+      if (tx.type === FinanceTransactionType.REFUND) {
+        if (isCash) refundCash += tx.amount;
+        if (isCard) refundCard += tx.amount;
+      } else {
+        if (isCash) cash += tx.amount;
+        if (isCard) card += tx.amount;
+      }
+    }
+
+    return {
+      ordersCount: orderIds.size,
       cash,
       card,
       refundCash,
@@ -416,27 +478,39 @@ export class FinanceService {
       });
     }
 
-    // ── Summary ───────────────────────────────────────────────────────────────
-    const workers = Array.from(workerMap.values());
+    // ── Summary (barcha workers bo'yicha) ─────────────────────────────────────
+    const allWorkers = Array.from(workerMap.values());
     const summary = {
-      pendingCash:  workers.reduce((s, w) => s + w.pending.cash,  0),
-      pendingCard:  workers.reduce((s, w) => s + w.pending.card,  0),
-      pendingTotal: workers.reduce((s, w) => s + w.pending.total, 0),
-      doneCash:     workers.reduce((s, w) => s + w.done.cash,     0),
-      doneCard:     workers.reduce((s, w) => s + w.done.card,     0),
-      doneTotal:    workers.reduce((s, w) => s + w.done.total,    0),
+      pendingCash:  allWorkers.reduce((s, w) => s + w.pending.cash,  0),
+      pendingCard:  allWorkers.reduce((s, w) => s + w.pending.card,  0),
+      pendingTotal: allWorkers.reduce((s, w) => s + w.pending.total, 0),
+      doneCash:     allWorkers.reduce((s, w) => s + w.done.cash,     0),
+      doneCard:     allWorkers.reduce((s, w) => s + w.done.card,     0),
+      doneTotal:    allWorkers.reduce((s, w) => s + w.done.total,    0),
     };
+
+    // ── Pagination ────────────────────────────────────────────────────────────
+    const page   = query.page  ?? 1;
+    const limit  = query.limit ?? 20;
+    const skip   = (page - 1) * limit;
+    const total  = allWorkers.length;
+    const pagedWorkers = allWorkers.slice(skip, skip + limit);
 
     const filter: Record<string, unknown> = {};
     if (query.userId  !== undefined) filter.userId  = query.userId;
     if (query.pending !== undefined) filter.pending = query.pending;
 
-    return new ResponseDto(true, 'Successfully found!', {
-      dateRange: { from: query.from ?? null, to: query.to ?? null },
-      ...(Object.keys(filter).length && { filter }),
-      summary,
-      workers,
-    });
+    return new ResponseDto(
+      true,
+      'Successfully found!',
+      {
+        dateRange: { from: query.from ?? null, to: query.to ?? null },
+        ...(Object.keys(filter).length && { filter }),
+        summary,
+        workers: pagedWorkers,
+      },
+      { page, limit, total, totalPages: Math.ceil(total / limit) },
+    );
   }
 
   async confirmHandover(
