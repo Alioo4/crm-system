@@ -31,6 +31,10 @@ export const MSG = {
   HISTORY_NOT_FOUND:      'HISTORY_NOT_FOUND',
   NAME_ALREADY_EXISTS:    'NAME_ALREADY_EXISTS',
 
+  // Handover
+  HANDOVER_NOT_FOUND:    'HANDOVER_NOT_FOUND',
+  HANDOVER_ALREADY_DONE: 'HANDOVER_ALREADY_DONE',
+
   // Common
   PERMISSION_DENIED: 'PERMISSION_DENIED',
 } as const;
@@ -68,6 +72,9 @@ const uz: Translations = {
   HISTORY_NOT_FOUND:        "Tarix topilmadi",
   NAME_ALREADY_EXISTS:      "Bu nom allaqachon mavjud",
 
+  HANDOVER_NOT_FOUND:    "To'lov topilmadi",
+  HANDOVER_ALREADY_DONE: "Bu to'lov allaqachon topshirilgan",
+
   PERMISSION_DENIED: "Ruxsat yo'q",
 };
 
@@ -99,6 +106,9 @@ const ru: Translations = {
   CURRENCY_ORDER_NOT_FOUND: "Валютный заказ не найден",
   HISTORY_NOT_FOUND:        "История не найдена",
   NAME_ALREADY_EXISTS:      "Это название уже существует",
+
+  HANDOVER_NOT_FOUND:    "Платёж не найден",
+  HANDOVER_ALREADY_DONE: "Этот платёж уже передан",
 
   PERMISSION_DENIED: "Доступ запрещён",
 };

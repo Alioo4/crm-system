@@ -1,9 +1,11 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { FinanceTransactionMethod, FinanceTransactionType } from '@prisma/client';
 import { ResponseDto } from 'src/common/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { FinanceDateRangeDto } from './dto/finance-date-range.dto';
 import { PaymentsQueryDto } from './dto/payments-query.dto';
+import { HandoverQueryDto } from './dto/handover-query.dto';
+import { ConfirmHandoverDto } from './dto/confirm-handover.dto';
 import { MSG } from 'src/common/i18n/messages';
 
 const PAYMENT_TYPES = [
@@ -325,6 +327,155 @@ export class FinanceService {
     }
 
     return map;
+  }
+
+  // ─── Handover: ishchi yig'gan pulni admin/managerga topshirish ───────────────
+
+  async getHandover(role: string, query: HandoverQueryDto) {
+    if (role !== 'ADMIN' && role !== 'MANAGER') {
+      throw new ForbiddenException(MSG.PERMISSION_DENIED);
+    }
+
+    const dateFilter = this.buildDateFilter(query.from, query.to);
+
+    const txs = await this.prisma.financeTransaction.findMany({
+      where: {
+        type:       { in: [FinanceTransactionType.PREPAYMENT, FinanceTransactionType.PAYMENT] },
+        ...(dateFilter && { createdAt: dateFilter }),
+        ...(query.userId && { createdById: query.userId }),
+        ...(query.pending === true  && { handedOver: false }),
+        ...(query.pending === false && { handedOver: true  }),
+      },
+      select: {
+        id:              true,
+        type:            true,
+        method:          true,
+        amount:          true,
+        comment:         true,
+        createdAt:       true,
+        handedOver:      true,
+        handedOverAt:    true,
+        handedOverByName: true,
+        orderId:         true,
+        order:           { select: { id: true, name: true, phone: true } },
+        createdBy:       { select: { id: true, name: true, role: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // ── Ishchilar bo'yicha guruhlash ──────────────────────────────────────────
+    type WorkerEntry = {
+      userId:   string;
+      name:     string | null;
+      role:     string | null;
+      pending:  { cash: number; card: number; total: number; items: object[] };
+      done:     { cash: number; card: number; total: number; items: object[] };
+    };
+
+    const workerMap = new Map<string, WorkerEntry>();
+
+    for (const tx of txs) {
+      const uid  = tx.createdBy?.id ?? 'unknown';
+      const name = tx.createdBy?.name ?? null;
+      const role = tx.createdBy?.role ?? null;
+
+      if (!workerMap.has(uid)) {
+        workerMap.set(uid, {
+          userId: uid, name, role,
+          pending: { cash: 0, card: 0, total: 0, items: [] },
+          done:    { cash: 0, card: 0, total: 0, items: [] },
+        });
+      }
+
+      const worker  = workerMap.get(uid)!;
+      const isCash  = tx.method === FinanceTransactionMethod.CASH;
+      const isCard  = tx.method === FinanceTransactionMethod.CARD;
+      const bucket  = tx.handedOver ? worker.done : worker.pending;
+
+      if (isCash) bucket.cash += tx.amount;
+      if (isCard) bucket.card += tx.amount;
+      bucket.total += tx.amount;
+
+      bucket.items.push({
+        transactionId: tx.id,
+        orderId:       tx.orderId,
+        clientName:    tx.order.name,
+        clientPhone:   tx.order.phone,
+        type:          tx.type,
+        method:        tx.method,
+        amount:        tx.amount,
+        comment:       tx.comment,
+        createdAt:     tx.createdAt,
+        handedOver:    tx.handedOver,
+        handedOverAt:  tx.handedOverAt,
+        receivedBy:    tx.handedOverByName,
+      });
+    }
+
+    // ── Summary ───────────────────────────────────────────────────────────────
+    const workers = Array.from(workerMap.values());
+    const summary = {
+      pendingCash:  workers.reduce((s, w) => s + w.pending.cash,  0),
+      pendingCard:  workers.reduce((s, w) => s + w.pending.card,  0),
+      pendingTotal: workers.reduce((s, w) => s + w.pending.total, 0),
+      doneCash:     workers.reduce((s, w) => s + w.done.cash,     0),
+      doneCard:     workers.reduce((s, w) => s + w.done.card,     0),
+      doneTotal:    workers.reduce((s, w) => s + w.done.total,    0),
+    };
+
+    const filter: Record<string, unknown> = {};
+    if (query.userId  !== undefined) filter.userId  = query.userId;
+    if (query.pending !== undefined) filter.pending = query.pending;
+
+    return new ResponseDto(true, 'Successfully found!', {
+      dateRange: { from: query.from ?? null, to: query.to ?? null },
+      ...(Object.keys(filter).length && { filter }),
+      summary,
+      workers,
+    });
+  }
+
+  async confirmHandover(
+    sub: string,
+    body: ConfirmHandoverDto,
+  ) {
+    // Faqat kiritilgan IDs lardagi pending transaksiyalarni topamiz
+    const existing = await this.prisma.financeTransaction.findMany({
+      where: {
+        id:   { in: body.transactionIds },
+        type: { in: [FinanceTransactionType.PREPAYMENT, FinanceTransactionType.PAYMENT] },
+      },
+      select: { id: true, handedOver: true },
+    });
+
+    if (existing.length === 0) {
+      throw new BadRequestException(MSG.HANDOVER_NOT_FOUND);
+    }
+
+    const alreadyDone = existing.filter((t) => t.handedOver);
+    if (alreadyDone.length > 0) {
+      throw new BadRequestException(MSG.HANDOVER_ALREADY_DONE);
+    }
+
+    const receiver = await this.prisma.user.findUnique({
+      where:  { id: sub },
+      select: { name: true },
+    });
+
+    await this.prisma.financeTransaction.updateMany({
+      where: { id: { in: body.transactionIds } },
+      data:  {
+        handedOver:       true,
+        handedOverAt:     new Date(),
+        handedOverById:   sub,
+        handedOverByName: receiver?.name ?? null,
+      },
+    });
+
+    return new ResponseDto(true, 'Muvaffaqiyatli tasdiqlandi', {
+      confirmed: existing.length,
+      receivedBy: receiver?.name ?? null,
+    });
   }
 
   private buildDateFilter(from?: string, to?: string) {

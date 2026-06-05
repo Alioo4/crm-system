@@ -240,6 +240,11 @@ model FinanceTransaction {
   orderId String @map("order_id") @db.Uuid
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  handedOver       Boolean   @default(false) @map("handed_over")
+  handedOverAt     DateTime? @map("handed_over_at")
+  handedOverById   String?   @map("handed_over_by_id")   @db.Uuid
+  handedOverByName String?   @map("handed_over_by_name") @db.VarChar(128)
+
   @@map("finance_transaction")
 }
 
