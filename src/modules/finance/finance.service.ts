@@ -29,16 +29,20 @@ export class FinanceService {
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
     const transactions = await this.prisma.financeTransaction.findMany({
-      where: dateFilter ? { createdAt: dateFilter } : undefined,
+      where: {
+        ...(dateFilter && { createdAt: dateFilter }),
+        ...(query.userId && { createdById: query.userId }),
+      },
       select: { type: true, method: true, amount: true, orderId: true },
     });
 
     const ordersCount = new Set(transactions.map((t) => t.orderId)).size;
-    const sales = this.calcSales(transactions);
+    const sales    = this.calcSales(transactions);
     const payments = this.calcPayments(transactions);
 
     return new ResponseDto(true, 'Successfully found!', {
       dateRange: { from: query.from ?? null, to: query.to ?? null },
+      ...(query.userId && { filter: { userId: query.userId } }),
       summary: {
         ordersCount,
         sales,

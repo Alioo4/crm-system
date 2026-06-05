@@ -57,14 +57,12 @@ export class OrderService {
     const region = regionId
       ? await this.prisma.region.findUnique({ where: { id: regionId } })
       : null;
-    if (regionId && !region)
-      throw new NotFoundException(MSG.REGION_NOT_FOUND);
+    if (regionId && !region) throw new NotFoundException(MSG.REGION_NOT_FOUND);
 
     const social = socialId
       ? await this.prisma.social.findUnique({ where: { id: socialId } })
       : null;
-    if (socialId && !social)
-      throw new NotFoundException(MSG.SOCIAL_NOT_FOUND);
+    if (socialId && !social) throw new NotFoundException(MSG.SOCIAL_NOT_FOUND);
 
     const orderStatus = orderStatusId
       ? await this.prisma.orderStatus.findUnique({
@@ -101,10 +99,10 @@ export class OrderService {
 
     await this.prisma.orderStatusHistory.create({
       data: {
-        orderId:   order.id,
+        orderId: order.id,
         fromStatus: null,
-        toStatus:  order.status,
-        actorId:   sub,
+        toStatus: order.status,
+        actorId: sub,
         actorName: findUseer?.name ?? null,
         actorRole: role,
       },
@@ -244,6 +242,10 @@ export class OrderService {
               createdBy: {
                 select: { id: true, name: true, phone: true, role: true },
               },
+              handedOver: true,
+              handedOverAt: true,
+              handedOverById: true,
+              handedOverByName: true,
             },
           },
           hashtags: true,
@@ -285,6 +287,10 @@ export class OrderService {
             createdBy: {
               select: { id: true, name: true, phone: true, role: true },
             },
+            handedOver: true,
+            handedOverAt: true,
+            handedOverById: true,
+            handedOverByName: true,
           },
         },
         hashtags: true,
@@ -429,12 +435,12 @@ export class OrderService {
       if (status && status !== findOrder.status) {
         await this.prisma.orderStatusHistory.create({
           data: {
-            orderId:    id,
+            orderId: id,
             fromStatus: findOrder.status,
-            toStatus:   status as unknown as Status,
-            actorId:    sub,
-            actorName:  findUseer?.name ?? null,
-            actorRole:  role,
+            toStatus: status as unknown as Status,
+            actorId: sub,
+            actorName: findUseer?.name ?? null,
+            actorRole: role,
           },
         });
       }
@@ -863,16 +869,18 @@ export class OrderService {
     const allTxs = [...existing, ...financeData];
 
     const netSale = allTxs.reduce((sum, tx) => {
-      if (tx.type === FinanceTransactionType.SALE)          return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.SALE_ADDITION) return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.SALE_CANCEL)   return sum - tx.amount;
+      if (tx.type === FinanceTransactionType.SALE) return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.SALE_ADDITION)
+        return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.SALE_CANCEL)
+        return sum - tx.amount;
       return sum;
     }, 0);
 
     const paid = allTxs.reduce((sum, tx) => {
       if (tx.type === FinanceTransactionType.PREPAYMENT) return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.PAYMENT)    return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.REFUND)     return sum - tx.amount;
+      if (tx.type === FinanceTransactionType.PAYMENT) return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.REFUND) return sum - tx.amount;
       return sum;
     }, 0);
 
@@ -884,17 +892,33 @@ export class OrderService {
   private calcFinanceSummary(
     transactions: { type: FinanceTransactionType; amount: number }[],
   ) {
-    let sale = 0, saleAddition = 0, saleCancel = 0;
-    let prepayment = 0, payment = 0, refund = 0;
+    let sale = 0,
+      saleAddition = 0,
+      saleCancel = 0;
+    let prepayment = 0,
+      payment = 0,
+      refund = 0;
 
     for (const tx of transactions ?? []) {
       switch (tx.type) {
-        case FinanceTransactionType.SALE: sale += tx.amount; break;
-        case FinanceTransactionType.SALE_ADDITION: saleAddition += tx.amount; break;
-        case FinanceTransactionType.SALE_CANCEL: saleCancel += tx.amount; break;
-        case FinanceTransactionType.PREPAYMENT: prepayment += tx.amount; break;
-        case FinanceTransactionType.PAYMENT: payment += tx.amount; break;
-        case FinanceTransactionType.REFUND: refund += tx.amount; break;
+        case FinanceTransactionType.SALE:
+          sale += tx.amount;
+          break;
+        case FinanceTransactionType.SALE_ADDITION:
+          saleAddition += tx.amount;
+          break;
+        case FinanceTransactionType.SALE_CANCEL:
+          saleCancel += tx.amount;
+          break;
+        case FinanceTransactionType.PREPAYMENT:
+          prepayment += tx.amount;
+          break;
+        case FinanceTransactionType.PAYMENT:
+          payment += tx.amount;
+          break;
+        case FinanceTransactionType.REFUND:
+          refund += tx.amount;
+          break;
       }
     }
 
