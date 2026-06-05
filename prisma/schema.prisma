@@ -77,7 +77,6 @@ model Order {
 model OrderStatusHistory {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
 
   orderId String @map("order_id") @db.Uuid
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -229,7 +228,6 @@ model CurrencyOrder {
 model FinanceTransaction {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
 
   type   FinanceTransactionType
   method FinanceTransactionMethod?
