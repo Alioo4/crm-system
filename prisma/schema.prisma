@@ -71,6 +71,26 @@ model Order {
   currencyOrder       CurrencyOrder[]
   financeTransactions FinanceTransaction[]
   hashtags            Hashtag[]
+  statusHistory       OrderStatusHistory[]
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  orderId String @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  fromStatus Status? @map("from_status")
+  toStatus   Status  @map("to_status")
+
+  actorId   String? @map("actor_id")   @db.Uuid
+  actorName String? @map("actor_name") @db.VarChar(128)
+  actorRole String? @map("actor_role") @db.VarChar(64)
+
+  note String? @db.VarChar(256)
+
+  @@map("order_status_history")
 }
 
 model OrderStatus {

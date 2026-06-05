@@ -1,9 +1,23 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentType, StatisticsQueryDto } from './dto/filter-query.dto';
+import { PaymentType, StatisticsQueryDto, WorkerStatsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
-import { FinanceTransactionType, FinanceTransactionMethod } from '@prisma/client';
+import { FinanceTransactionType, FinanceTransactionMethod, Status } from '@prisma/client';
 import { MSG } from 'src/common/i18n/messages';
+
+type OrderEntry = {
+  orderId:     string;
+  clientName:  string | null;
+  phone:       string | null;
+  completedAt: string;          // ISO string — aniq o'tish vaqti
+};
+type WorkerAgg = {
+  userId:   string;
+  name:     string | null;
+  orderIds: Set<string>;
+  byDay:    Map<string, OrderEntry[]>;
+  seen:     Set<string>;
+};
 
 @Injectable()
 export class StatisticsService {
@@ -223,5 +237,175 @@ export class StatisticsService {
     if (from) range.gte = toUtc(from);
     if (to) range.lte = toUtc(to, true);
     return range;
+  }
+
+  // ─── Worker daily performance ─────────────────────────────────────────────────
+  //
+  // Har bir rolning "bajardi" deb hisoblash qoidasi:
+  //   ZAMIR       : fromStatus=ZAMIR  → toStatus ∈ {ZAVOD, USTANOVCHIK, DONE}
+  //   ZAVOD       : fromStatus=ZAVOD  → toStatus ∈ {USTANOVCHIK, DONE}
+  //   USTANOVCHIK : fromStatus=USTANOVCHIK → toStatus=DONE
+  //   MANAGER     : toStatus=DONE
+  //
+  // Response: role bo'yicha guruhlangan → ichida har bir ishchi → kunlik breakdown.
+  // Filterlar: role (faqat shu rol), userId (faqat shu ishchi).
+
+  async getWorkerStats(role: string, query: WorkerStatsQueryDto) {
+    if (role !== 'ADMIN') throw new ForbiddenException(MSG.PERMISSION_DENIED);
+
+    const dateFilter  = this.buildDateFilter(query.from, query.to);
+    // roleMap: roleName → (userId → WorkerAgg)
+    const roleMap     = new Map<string, Map<string, WorkerAgg>>();
+    const shouldFetch = (r: string) => !query.role || query.role === r;
+
+    const orderWhere = (field: string) =>
+      query.userId ? { [field]: query.userId } : { [field]: { not: null } };
+
+    // ── ZAMIR ─────────────────────────────────────────────────────────────────
+    if (shouldFetch('ZAMIR')) {
+      const rows = await this.prisma.orderStatusHistory.findMany({
+        where: {
+          fromStatus: Status.ZAMIR,
+          toStatus:   { in: [Status.ZAVOD, Status.USTANOVCHIK, Status.DONE] },
+          ...(dateFilter && { createdAt: dateFilter }),
+          order: orderWhere('zamirId'),
+        },
+        select: {
+          createdAt: true,
+          order: { select: { id: true, name: true, phone: true, zamirId: true, zamirName: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      for (const h of rows)
+        this.addToRoleMap(roleMap, 'ZAMIR', h.order.zamirId, h.order.zamirName,
+          { id: h.order.id, name: h.order.name, phone: h.order.phone, completedAt: h.createdAt });
+    }
+
+    // ── ZAVOD ─────────────────────────────────────────────────────────────────
+    if (shouldFetch('ZAVOD')) {
+      const rows = await this.prisma.orderStatusHistory.findMany({
+        where: {
+          fromStatus: Status.ZAVOD,
+          toStatus:   { in: [Status.USTANOVCHIK, Status.DONE] },
+          ...(dateFilter && { createdAt: dateFilter }),
+          order: orderWhere('zavodId'),
+        },
+        select: {
+          createdAt: true,
+          order: { select: { id: true, name: true, phone: true, zavodId: true, zavodName: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      for (const h of rows)
+        this.addToRoleMap(roleMap, 'ZAVOD', h.order.zavodId, h.order.zavodName,
+          { id: h.order.id, name: h.order.name, phone: h.order.phone, completedAt: h.createdAt });
+    }
+
+    // ── USTANOVCHIK ───────────────────────────────────────────────────────────
+    if (shouldFetch('USTANOVCHIK')) {
+      const rows = await this.prisma.orderStatusHistory.findMany({
+        where: {
+          fromStatus: Status.USTANOVCHIK,
+          toStatus:   Status.DONE,
+          ...(dateFilter && { createdAt: dateFilter }),
+          order: orderWhere('ustId'),
+        },
+        select: {
+          createdAt: true,
+          order: { select: { id: true, name: true, phone: true, ustId: true, ustName: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      for (const h of rows)
+        this.addToRoleMap(roleMap, 'USTANOVCHIK', h.order.ustId, h.order.ustName,
+          { id: h.order.id, name: h.order.name, phone: h.order.phone, completedAt: h.createdAt });
+    }
+
+    // ── MANAGER ───────────────────────────────────────────────────────────────
+    if (shouldFetch('MANAGER')) {
+      const rows = await this.prisma.orderStatusHistory.findMany({
+        where: {
+          toStatus: Status.DONE,
+          ...(dateFilter && { createdAt: dateFilter }),
+          order: orderWhere('managerId'),
+        },
+        select: {
+          createdAt: true,
+          order: { select: { id: true, name: true, phone: true, managerId: true, managerName: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      for (const h of rows)
+        this.addToRoleMap(roleMap, 'MANAGER', h.order.managerId, h.order.managerName,
+          { id: h.order.id, name: h.order.name, phone: h.order.phone, completedAt: h.createdAt });
+    }
+
+    // ── Format response ───────────────────────────────────────────────────────
+    const ROLE_ORDER = ['MANAGER', 'ZAMIR', 'ZAVOD', 'USTANOVCHIK'];
+
+    const byRole = Array.from(roleMap.entries())
+      .sort(([a], [b]) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b))
+      .map(([roleName, workerMap]) => {
+        const workers = Array.from(workerMap.values()).map((w) => ({
+          userId:      w.userId,
+          name:        w.name,
+          totalOrders: w.orderIds.size,
+          byDay: Array.from(w.byDay.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, orders]) => ({ date, count: orders.length, orders })),
+        }));
+
+        return {
+          role:        roleName,
+          totalOrders: workers.reduce((s, w) => s + w.totalOrders, 0),
+          workers,
+        };
+      });
+
+    const filter: Record<string, string> = {};
+    if (query.role)   filter.role   = query.role;
+    if (query.userId) filter.userId = query.userId;
+
+    return new ResponseDto(true, 'Successfully found!', {
+      dateRange: { from: query.from ?? null, to: query.to ?? null },
+      ...(Object.keys(filter).length && { filter }),
+      byRole,
+    });
+  }
+
+  private addToRoleMap(
+    roleMap:    Map<string, Map<string, WorkerAgg>>,
+    workerRole: string,
+    userId:     string | null,
+    userName:   string | null,
+    order: { id: string; name: string | null; phone: string | null; completedAt: Date },
+  ) {
+    if (!userId) return;
+
+    if (!roleMap.has(workerRole)) roleMap.set(workerRole, new Map());
+    const workerMap = roleMap.get(workerRole)!;
+
+    if (!workerMap.has(userId)) {
+      workerMap.set(userId, {
+        userId, name: userName,
+        orderIds: new Set(),
+        byDay:    new Map(),
+        seen:     new Set(),
+      });
+    }
+
+    const worker = workerMap.get(userId)!;
+    if (worker.seen.has(order.id)) return;   // dedup
+    worker.seen.add(order.id);
+    worker.orderIds.add(order.id);
+
+    const day = order.completedAt.toISOString().split('T')[0];
+    if (!worker.byDay.has(day)) worker.byDay.set(day, []);
+    worker.byDay.get(day)!.push({
+      orderId:     order.id,
+      clientName:  order.name,
+      phone:       order.phone,
+      completedAt: order.completedAt.toISOString(),
+    });
   }
 }

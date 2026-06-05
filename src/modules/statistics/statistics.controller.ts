@@ -1,7 +1,7 @@
 import { Controller, Get, Query} from '@nestjs/common';
 import { StatisticsService } from './statistics.service';
 import { User } from 'src/common/decorators/get-user.decarator';
-import { StatisticsQueryDto } from './dto/filter-query.dto';
+import { StatisticsQueryDto, WorkerStatsQueryDto } from './dto/filter-query.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Statistics')
@@ -12,9 +12,18 @@ export class StatisticsController {
   @ApiBearerAuth()
   @Get()
   findAll(
-    @User() user: {sub: string, role: string},
+    @User() user: { sub: string; role: string },
     @Query() query: StatisticsQueryDto,
   ) {
     return this.statisticsService.findAll(user.role, query);
+  }
+
+  @ApiBearerAuth()
+  @Get('workers')
+  getWorkerStats(
+    @User() user: { sub: string; role: string },
+    @Query() query: WorkerStatsQueryDto,
+  ) {
+    return this.statisticsService.getWorkerStats(user.role, query);
   }
 }

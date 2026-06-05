@@ -99,6 +99,17 @@ export class OrderService {
       },
     });
 
+    await this.prisma.orderStatusHistory.create({
+      data: {
+        orderId:   order.id,
+        fromStatus: null,
+        toStatus:  order.status,
+        actorId:   sub,
+        actorName: findUseer?.name ?? null,
+        actorRole: role,
+      },
+    });
+
     const financeData = (payments || []).map((p) => ({
       type: p.paymentType as unknown as FinanceTransactionType,
       method: p.paymentMethod as unknown as FinanceTransactionMethod | null,
@@ -413,6 +424,20 @@ export class OrderService {
 
       const { payments, startCurrency, endCurrency, hashtagIds, ...orderData } =
         updateOrderDto;
+
+      // Record every status transition
+      if (status && status !== findOrder.status) {
+        await this.prisma.orderStatusHistory.create({
+          data: {
+            orderId:    id,
+            fromStatus: findOrder.status,
+            toStatus:   status as unknown as Status,
+            actorId:    sub,
+            actorName:  findUseer?.name ?? null,
+            actorRole:  role,
+          },
+        });
+      }
 
       const changeOrder = await this.prisma.order.update({
         where: { id },
