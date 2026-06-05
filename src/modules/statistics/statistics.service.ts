@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentType, StatisticsQueryDto, WorkerStatsQueryDto } from './dto/filter-query.dto';
+import { PaymentType, StatisticsQueryDto, WorkerStatsQueryDto, SourceStatsQueryDto } from './dto/filter-query.dto';
 import { ResponseDto } from 'src/common/types';
 import { FinanceTransactionType, FinanceTransactionMethod, Status } from '@prisma/client';
 import { MSG } from 'src/common/i18n/messages';
@@ -237,6 +237,84 @@ export class StatisticsService {
     if (from) range.gte = toUtc(from);
     if (to) range.lte = toUtc(to, true);
     return range;
+  }
+
+  // ─── Source statistics (Social & Region) ─────────────────────────────────────
+
+  async getSourceStats(role: string, query: SourceStatsQueryDto) {
+    if (role !== 'ADMIN') throw new ForbiddenException(MSG.PERMISSION_DENIED);
+
+    const dateFilter = this.buildDateFilter(query.from, query.to);
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        ...(dateFilter && { createdAt: dateFilter }),
+        ...(query.socialId && { socialId: query.socialId }),
+        ...(query.regionId && { regionId: query.regionId }),
+      },
+      select: {
+        id:        true,
+        createdAt: true,
+        social:    { select: { id: true, name: true } },
+        region:    { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    type SourceAgg = {
+      id:       string | null;
+      name:     string;
+      total:    number;
+      byDay:    Map<string, number>;
+    };
+
+    const socialMap = new Map<string, SourceAgg>();
+    const regionMap = new Map<string, SourceAgg>();
+
+    const addToSource = (
+      map:       Map<string, SourceAgg>,
+      key:       string,
+      id:        string | null,
+      name:      string,
+      day:       string,
+    ) => {
+      if (!map.has(key)) {
+        map.set(key, { id, name, total: 0, byDay: new Map() });
+      }
+      const src = map.get(key)!;
+      src.total++;
+      src.byDay.set(day, (src.byDay.get(day) ?? 0) + 1);
+    };
+
+    for (const order of orders) {
+      const day = order.createdAt.toISOString().split('T')[0];
+      addToSource(socialMap, order.social?.id ?? 'none', order.social?.id ?? null, order.social?.name ?? "Ko'rsatilmagan", day);
+      addToSource(regionMap, order.region?.id ?? 'none', order.region?.id ?? null, order.region?.name ?? "Ko'rsatilmagan", day);
+    }
+
+    const format = (map: Map<string, SourceAgg>) =>
+      Array.from(map.values())
+        .sort((a, b) => b.total - a.total)
+        .map((s) => ({
+          id:          s.id,
+          name:        s.name,
+          totalOrders: s.total,
+          byDay: Array.from(s.byDay.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, count]) => ({ date, count })),
+        }));
+
+    const filter: Record<string, string> = {};
+    if (query.socialId) filter.socialId = query.socialId;
+    if (query.regionId) filter.regionId = query.regionId;
+
+    return new ResponseDto(true, 'Successfully found!', {
+      dateRange:   { from: query.from ?? null, to: query.to ?? null },
+      totalOrders: orders.length,
+      ...(Object.keys(filter).length && { filter }),
+      bySocial:    format(socialMap),
+      byRegion:    format(regionMap),
+    });
   }
 
   // ─── Worker daily performance ─────────────────────────────────────────────────
