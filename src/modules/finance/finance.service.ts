@@ -88,6 +88,7 @@ export class FinanceService {
             createdAt: true, orderId: true,
             createdBy: { select: { id: true, name: true, role: true } },
             order:     { select: { id: true, name: true, phone: true } },
+            comment: true,
           },
           orderBy: { createdAt: 'asc' },
         })
@@ -395,8 +396,6 @@ export class FinanceService {
     return map;
   }
 
-  // ─── Handover: ishchi yig'gan pulni admin/managerga topshirish ───────────────
-
   async getHandover(role: string, query: HandoverQueryDto) {
     if (role !== 'ADMIN' && role !== 'MANAGER') {
       throw new ForbiddenException(MSG.PERMISSION_DENIED);
@@ -404,72 +403,105 @@ export class FinanceService {
 
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
+    const HANDOVER_TYPES = [
+      FinanceTransactionType.PREPAYMENT,
+      FinanceTransactionType.PAYMENT,
+      FinanceTransactionType.REFUND,
+    ];
+
     const txs = await this.prisma.financeTransaction.findMany({
       where: {
-        type:       { in: [FinanceTransactionType.PREPAYMENT, FinanceTransactionType.PAYMENT] },
+        type:       { in: HANDOVER_TYPES },
         ...(dateFilter && { createdAt: dateFilter }),
         ...(query.userId && { createdById: query.userId }),
         ...(query.pending === true  && { handedOver: false }),
         ...(query.pending === false && { handedOver: true  }),
       },
       select: {
-        id:              true,
-        type:            true,
-        method:          true,
-        amount:          true,
-        comment:         true,
-        createdAt:       true,
-        handedOver:      true,
-        handedOverAt:    true,
+        id:               true,
+        type:             true,
+        method:           true,
+        amount:           true,
+        comment:          true,
+        createdAt:        true,
+        handedOver:       true,
+        handedOverAt:     true,
         handedOverByName: true,
-        orderId:         true,
-        order:           { select: { id: true, name: true, phone: true } },
-        createdBy:       { select: { id: true, name: true, role: true } },
+        orderId:          true,
+        order:            { select: { id: true, name: true, phone: true } },
+        createdBy:        { select: { id: true, name: true, role: true } },
       },
       orderBy: { createdAt: 'asc' },
     });
 
-    // ── Ishchilar bo'yicha guruhlash ──────────────────────────────────────────
-    type WorkerEntry = {
-      userId:   string;
-      name:     string | null;
-      role:     string | null;
-      pending:  { cash: number; card: number; total: number; items: object[] };
-      done:     { cash: number; card: number; total: number; items: object[] };
+    // ── Worker bucket tipi ────────────────────────────────────────────────────
+    type Bucket = {
+      collectedCash: number;   // PREPAYMENT + PAYMENT (CASH)
+      collectedCard: number;   // PREPAYMENT + PAYMENT (CARD)
+      refundCash:    number;   // REFUND (CASH)  — yig'ilgan puldan ayiriladi
+      refundCard:    number;   // REFUND (CARD)
+      netCash:       number;   // collectedCash - refundCash
+      netCard:       number;   // collectedCard - refundCard
+      net:           number;   // netCash + netCard
+      items:         object[];
     };
+
+    type WorkerEntry = {
+      userId:  string;
+      name:    string | null;
+      role:    string | null;
+      pending: Bucket;
+      done:    Bucket;
+    };
+
+    const emptyBucket = (): Bucket => ({
+      collectedCash: 0, collectedCard: 0,
+      refundCash:    0, refundCard:    0,
+      netCash:       0, netCard:       0, net: 0,
+      items: [],
+    });
 
     const workerMap = new Map<string, WorkerEntry>();
 
     for (const tx of txs) {
       const uid  = tx.createdBy?.id ?? 'unknown';
       const name = tx.createdBy?.name ?? null;
-      const role = tx.createdBy?.role ?? null;
+      const uRole = tx.createdBy?.role ?? null;
 
       if (!workerMap.has(uid)) {
-        workerMap.set(uid, {
-          userId: uid, name, role,
-          pending: { cash: 0, card: 0, total: 0, items: [] },
-          done:    { cash: 0, card: 0, total: 0, items: [] },
-        });
+        workerMap.set(uid, { userId: uid, name, role: uRole, pending: emptyBucket(), done: emptyBucket() });
       }
 
-      const worker  = workerMap.get(uid)!;
-      const isCash  = tx.method === FinanceTransactionMethod.CASH;
-      const isCard  = tx.method === FinanceTransactionMethod.CARD;
-      const bucket  = tx.handedOver ? worker.done : worker.pending;
+      const worker = workerMap.get(uid)!;
+      const bucket = tx.handedOver ? worker.done : worker.pending;
+      const isCash = tx.method === FinanceTransactionMethod.CASH;
+      const isCard = tx.method === FinanceTransactionMethod.CARD;
+      const isRefund = tx.type === FinanceTransactionType.REFUND;
 
-      if (isCash) bucket.cash += tx.amount;
-      if (isCard) bucket.card += tx.amount;
-      bucket.total += tx.amount;
+      if (isRefund) {
+        // REFUND — mijozga qaytarilgan pul → adminga topshiriladigan summani kamaytiradi
+        if (isCash) bucket.refundCash += tx.amount;
+        if (isCard) bucket.refundCard += tx.amount;
+      } else {
+        // PREPAYMENT / PAYMENT — mijozdan yig'ilgan pul
+        if (isCash) bucket.collectedCash += tx.amount;
+        if (isCard) bucket.collectedCard += tx.amount;
+      }
+
+      // Net qayta hisoblanadi
+      bucket.netCash = bucket.collectedCash - bucket.refundCash;
+      bucket.netCard = bucket.collectedCard - bucket.refundCard;
+      bucket.net     = bucket.netCash + bucket.netCard;
 
       bucket.items.push({
         transactionId: tx.id,
         orderId:       tx.orderId,
         clientName:    tx.order.name,
         clientPhone:   tx.order.phone,
-        type:          tx.type,
+        type:          tx.type,          // PREPAYMENT | PAYMENT | REFUND
         method:        tx.method,
         amount:        tx.amount,
+        isRefund,                        // true bo'lsa — bu summa ayiriladi
         comment:       tx.comment,
         createdAt:     tx.createdAt,
         handedOver:    tx.handedOver,
@@ -478,15 +510,16 @@ export class FinanceService {
       });
     }
 
-    // ── Summary (barcha workers bo'yicha) ─────────────────────────────────────
+    // ── Summary (barcha workers bo'yicha net summalar) ────────────────────────
     const allWorkers = Array.from(workerMap.values());
     const summary = {
-      pendingCash:  allWorkers.reduce((s, w) => s + w.pending.cash,  0),
-      pendingCard:  allWorkers.reduce((s, w) => s + w.pending.card,  0),
-      pendingTotal: allWorkers.reduce((s, w) => s + w.pending.total, 0),
-      doneCash:     allWorkers.reduce((s, w) => s + w.done.cash,     0),
-      doneCard:     allWorkers.reduce((s, w) => s + w.done.card,     0),
-      doneTotal:    allWorkers.reduce((s, w) => s + w.done.total,    0),
+      pendingNet:       allWorkers.reduce((s, w) => s + w.pending.net,          0),
+      pendingNetCash:   allWorkers.reduce((s, w) => s + w.pending.netCash,      0),
+      pendingNetCard:   allWorkers.reduce((s, w) => s + w.pending.netCard,      0),
+      pendingRefund:    allWorkers.reduce((s, w) => s + w.pending.refundCash + w.pending.refundCard, 0),
+      doneNet:          allWorkers.reduce((s, w) => s + w.done.net,             0),
+      doneNetCash:      allWorkers.reduce((s, w) => s + w.done.netCash,         0),
+      doneNetCard:      allWorkers.reduce((s, w) => s + w.done.netCard,         0),
     };
 
     // ── Pagination ────────────────────────────────────────────────────────────
@@ -517,13 +550,13 @@ export class FinanceService {
     sub: string,
     body: ConfirmHandoverDto,
   ) {
-    // Faqat kiritilgan IDs lardagi pending transaksiyalarni topamiz
+    // REFUND ham tasdiqlanishi mumkin — net hisob-kitob uchun
     const existing = await this.prisma.financeTransaction.findMany({
       where: {
         id:   { in: body.transactionIds },
-        type: { in: [FinanceTransactionType.PREPAYMENT, FinanceTransactionType.PAYMENT] },
+        type: { in: [FinanceTransactionType.PREPAYMENT, FinanceTransactionType.PAYMENT, FinanceTransactionType.REFUND] },
       },
-      select: { id: true, handedOver: true },
+      select: { id: true, handedOver: true, type: true, amount: true, method: true },
     });
 
     if (existing.length === 0) {
@@ -550,9 +583,22 @@ export class FinanceService {
       },
     });
 
+    // Tasdiqlangan transaksiyalarning net summasi
+    let netCash = 0, netCard = 0;
+    for (const tx of existing) {
+      const sign   = tx.type === FinanceTransactionType.REFUND ? -1 : 1;
+      const isCash = tx.method === FinanceTransactionMethod.CASH;
+      const isCard = tx.method === FinanceTransactionMethod.CARD;
+      if (isCash) netCash += sign * tx.amount;
+      if (isCard) netCard += sign * tx.amount;
+    }
+
     return new ResponseDto(true, 'Muvaffaqiyatli tasdiqlandi', {
-      confirmed: existing.length,
+      confirmed:  existing.length,
       receivedBy: receiver?.name ?? null,
+      netCash,
+      netCard,
+      net: netCash + netCard,
     });
   }
 
