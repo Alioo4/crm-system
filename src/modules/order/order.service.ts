@@ -8,7 +8,6 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { IResponse, ResponseDto } from 'src/common/types';
 import { MSG } from 'src/common/i18n/messages';
-import { HistoryService } from '../history/history.service';
 import {
   FinanceTransactionMethod,
   FinanceTransactionType,
@@ -26,10 +25,7 @@ import {
 
 @Injectable()
 export class OrderService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly history: HistoryService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
   async create(
     createOrderDto: CreateOrderDto,
     { sub, role },
@@ -393,41 +389,6 @@ export class OrderService {
         });
       }
 
-      const history: any = {
-        name: findOrder.name,
-        phone: findOrder.phone,
-        comment: findOrder.comment,
-        endDateJob: findOrder.endDateJob,
-        workerArrivalDate: findOrder.workerArrivalDate,
-        orderId: findOrder.id,
-        total: updateOrderDto.total ? updateOrderDto.total : findOrder.total,
-        prePayment: updateOrderDto.prePayment
-          ? updateOrderDto.prePayment
-          : findOrder.prePayment,
-        dueAmount: updateOrderDto.dueAmount
-          ? updateOrderDto.dueAmount
-          : findOrder.dueAmount,
-        regionId: findOrder.regionId,
-        longitude: findOrder.longitude,
-        latitude: findOrder.latitude,
-        socialId: findOrder.socialId,
-        status: findOrder.status,
-        managerId: findOrder.managerId,
-        zamirId: findOrder.zamirId,
-        zavodId: findOrder.zavodId,
-        ustId: findOrder.ustId,
-        getAllPaymentDate: findOrder.getAllPaymentDate,
-        getPrePaymentDate: findOrder.getPrePaymentDate,
-      };
-
-      if (
-        status === Status.ZAVOD ||
-        status === Status.USTANOVCHIK ||
-        status === Status.DONE
-      ) {
-        await this.history.create(history);
-      }
-
       const { payments, startCurrency, endCurrency, hashtagIds, ...orderData } =
         updateOrderDto;
 
@@ -570,29 +531,6 @@ export class OrderService {
       ) {
         await sendTelegram('changed');
       } else if (status === Status.DONE) {
-        const findHistory = await this.prisma.history.findFirst({
-          where: { orderId: id },
-          select: { id: true },
-        });
-
-        if (findHistory) {
-          await this.prisma.history.update({
-            where: { id: findHistory.id },
-            data: {
-              managerName: findOrder.managerName,
-              managerphone: findOrder.managerphone,
-              zamirName: findOrder.zamirName,
-              zamirPhone: findOrder.zamirPhone,
-              ustName: findOrder.ustName,
-              ustPhone: findOrder.ustPhone,
-              zavodName: findOrder.zavodName,
-              zavodPhone: findOrder.zavodPhone,
-              getAllPaymentDate: findOrder.getAllPaymentDate,
-              getPrePaymentDate: findOrder.getPrePaymentDate,
-            },
-          });
-        }
-
         await sendTelegram('done');
       }
 
