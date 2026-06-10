@@ -109,6 +109,7 @@ export class OrderService {
       method: p.paymentMethod as unknown as FinanceTransactionMethod | null,
       amount: p.amount,
       comment: p.comment,
+      imageUrls: p.imageUrls ?? [],
       createdById: sub,
       orderId: order.id,
     }));
@@ -235,6 +236,7 @@ export class OrderService {
               method: true,
               amount: true,
               comment: true,
+              imageUrls: true,
               createdBy: {
                 select: { id: true, name: true, phone: true, role: true },
               },
@@ -447,6 +449,7 @@ export class OrderService {
         method: p.paymentMethod as unknown as FinanceTransactionMethod | null,
         amount: p.amount,
         comment: p.comment,
+        imageUrls: p.imageUrls ?? [],
         createdById: sub,
         orderId: id,
       }));
@@ -477,6 +480,7 @@ export class OrderService {
               method: tx.method,
               amount: tx.amount,
               comment: undefined,
+              imageUrls: [],
               createdById: sub,
               orderId: id,
             });

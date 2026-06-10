@@ -76,6 +76,16 @@ export class PaymentDto {
   @IsOptional()
   @IsString()
   comment?: string;
+
+  @ApiPropertyOptional({
+    description: 'R2 image URLs (receipt/proof photos)',
+    example: ['https://pub-xxx.r2.dev/images/uuid1.jpg'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  imageUrls?: string[];
 }
 
 export class UpdateOrderDto {

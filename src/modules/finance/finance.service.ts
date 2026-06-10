@@ -89,6 +89,7 @@ export class FinanceService {
             createdBy: { select: { id: true, name: true, role: true } },
             order:     { select: { id: true, name: true, phone: true } },
             comment: true,
+            imageUrls: true,
           },
           orderBy: { createdAt: 'asc' },
         })
@@ -403,7 +404,7 @@ export class FinanceService {
 
     const dateFilter = this.buildDateFilter(query.from, query.to);
     const txSelect = {
-      id: true, type: true, method: true, amount: true, comment: true,
+      id: true, type: true, method: true, amount: true, comment: true, imageUrls: true,
       createdAt: true, handedOver: true, handedOverAt: true, handedOverByName: true,
       orderId: true,
       order:     { select: { id: true, name: true, phone: true } },
@@ -493,7 +494,7 @@ export class FinanceService {
         clientName: tx.order.name, clientPhone: tx.order.phone,
         type: tx.type, method: tx.method, amount: tx.amount,
         isRefund: false,
-        comment: tx.comment, createdAt: tx.createdAt,
+        comment: tx.comment, imageUrls: tx.imageUrls, createdAt: tx.createdAt,
         createdBy: tx.createdBy ?? null,
         handedOver: tx.handedOver, handedOverAt: tx.handedOverAt, receivedBy: tx.handedOverByName,
       });
@@ -520,8 +521,8 @@ export class FinanceService {
         clientName: tx.order.name, clientPhone: tx.order.phone,
         type: tx.type, method: tx.method, amount: tx.amount,
         isRefund: true,
-        comment: tx.comment, createdAt: tx.createdAt,
-        createdBy: tx.createdBy ?? null,         // kim kiritganini ko'rsatamiz
+        comment: tx.comment, imageUrls: tx.imageUrls, createdAt: tx.createdAt,
+        createdBy: tx.createdBy ?? null,
         handedOver: tx.handedOver, handedOverAt: tx.handedOverAt, receivedBy: tx.handedOverByName,
       });
     }

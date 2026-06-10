@@ -234,6 +234,7 @@ model FinanceTransaction {
   method FinanceTransactionMethod?
   amount Int  
   comment String?                @db.VarChar(1024)
+  imageUrls String[]             @db.VarChar(1024) @default([])
 
   createdById   String? @map("created_by_id") @db.Uuid
   createdBy     User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)

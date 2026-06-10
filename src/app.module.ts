@@ -14,6 +14,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
 import { OrderCurrencyModule } from './modules/order-currency/order-currency.module';
 import { HashtagModule } from './modules/hashtag/hashtag.module';
 import { FinanceModule } from './modules/finance/finance.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { FinanceModule } from './modules/finance/finance.module';
     OrderCurrencyModule,
     HashtagModule,
     FinanceModule,
+    UploadModule,
   ],
   controllers: [],
   providers: [
