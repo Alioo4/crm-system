@@ -249,12 +249,14 @@ export class UpdateOrderDto {
         paymentMethod: 'CASH',
         paymentType: 'PREPAYMENT',
         comment: 'Naqd avans olindi',
+        imageUrls: ['https://pub-xxx.r2.dev/images/uuid1.jpg'],
       },
       {
         amount: 200000,
         paymentMethod: 'CARD',
         paymentType: 'PREPAYMENT',
         comment: 'Karta orqali avans olindi',
+        imageUrls: ['https://pub-xxx.r2.dev/images/uuid2.jpg', 'https://pub-xxx.r2.dev/images/uuid3.jpg'],
       },
     ],
   })
