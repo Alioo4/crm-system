@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -20,7 +24,15 @@ export class AuthService {
   async login(userData: LoginDto) {
     const findUser = await this.prisma.user.findUnique({
       where: { phone: userData.phone },
-      select: { id: true, password: true, role: true, name: true, phone: true, createdAt: true, status: true },
+      select: {
+        id: true,
+        password: true,
+        role: true,
+        name: true,
+        phone: true,
+        createdAt: true,
+        status: true,
+      },
     });
 
     if (!findUser) {
@@ -53,27 +65,38 @@ export class AuthService {
   async createUser(userData: RegisterDto) {
     const isExist = await this.prisma.user.findUnique({
       where: { phone: userData.phone },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
-    if (isExist) {
+    if (isExist?.status === UserStatus.ACTIVE) {
       throw new BadRequestException(MSG.PHONE_ALREADY_EXISTS);
     }
 
     const hashPass = await this.hashing(userData.password);
 
-    const user = await this.prisma.user.create({
-      data: {
-        phone: userData.phone,
-        name: userData.name,
-        password: hashPass,
-        role: userData.role,
-      },
-      select: {
-        phone: true,
-        name: true,
-      },
-    });
+    const select = { phone: true, name: true };
+
+    const user =
+      isExist?.status === UserStatus.DELETED
+        ? await this.prisma.user.update({
+            where: { id: isExist.id },
+            data: {
+              name: userData.name,
+              password: hashPass,
+              role: userData.role,
+              status: UserStatus.ACTIVE,
+            },
+            select,
+          })
+        : await this.prisma.user.create({
+            data: {
+              phone: userData.phone,
+              name: userData.name,
+              password: hashPass,
+              role: userData.role,
+            },
+            select,
+          });
 
     return new ResponseDto(true, 'User created', user);
   }
