@@ -1,5 +1,12 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
-import { FinanceTransactionMethod, FinanceTransactionType } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+import {
+  FinanceTransactionMethod,
+  FinanceTransactionType,
+} from '@prisma/client';
 import { ResponseDto } from 'src/common/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { FinanceDateRangeDto } from './dto/finance-date-range.dto';
@@ -37,7 +44,7 @@ export class FinanceService {
     });
 
     const ordersCount = new Set(transactions.map((t) => t.orderId)).size;
-    const sales    = this.calcSales(transactions);
+    const sales = this.calcSales(transactions);
     const payments = this.calcPayments(transactions);
 
     return new ResponseDto(true, 'Successfully found!', {
@@ -57,9 +64,9 @@ export class FinanceService {
   async getPayments(role: string, query: PaymentsQueryDto) {
     this.checkAdmin(role);
 
-    const page  = query.page  ?? 1;
+    const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
@@ -75,30 +82,35 @@ export class FinanceService {
       select: { orderId: true, type: true, method: true, amount: true },
     });
 
-    const allOrderIds  = [...new Set(allTxs.map((t) => t.orderId))];
-    const total        = allOrderIds.length;
+    const allOrderIds = [...new Set(allTxs.map((t) => t.orderId))];
+    const total = allOrderIds.length;
     const pagedOrderIds = allOrderIds.slice(skip, skip + limit);
 
     // ── Items: faqat shu sahifadagi orderlar uchun to'liq ma'lumot ────────────
-    const pagedTxs = pagedOrderIds.length > 0
-      ? await this.prisma.financeTransaction.findMany({
-          where: { ...where, orderId: { in: pagedOrderIds } },
-          select: {
-            id: true, type: true, method: true, amount: true,
-            createdAt: true, orderId: true,
-            createdBy: { select: { id: true, name: true, role: true } },
-            order:     { select: { id: true, name: true, phone: true } },
-            comment: true,
-            imageUrls: true,
-          },
-          orderBy: { createdAt: 'asc' },
-        })
-      : [];
+    const pagedTxs =
+      pagedOrderIds.length > 0
+        ? await this.prisma.financeTransaction.findMany({
+            where: { ...where, orderId: { in: pagedOrderIds } },
+            select: {
+              id: true,
+              type: true,
+              method: true,
+              amount: true,
+              createdAt: true,
+              orderId: true,
+              createdBy: { select: { id: true, name: true, role: true } },
+              order: { select: { id: true, name: true, phone: true } },
+              comment: true,
+              imageUrls: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          })
+        : [];
 
-    const items   = this.groupPaymentsByOrder(pagedTxs);
+    const items = this.groupPaymentsByOrder(pagedTxs);
     // Summary barcha transaksiyalardan hisoblanadi (sahifa emas)
     const allItems = this.calcSummaryFromTxList(allTxs);
-    const summary  = allItems;
+    const summary = allItems;
 
     return new ResponseDto(
       true,
@@ -118,20 +130,28 @@ export class FinanceService {
   async getDebtOrders(role: string, query: FinanceDateRangeDto) {
     this.checkAdmin(role);
 
-    const page  = query.page  ?? 1;
+    const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
     const orders = await this.prisma.order.findMany({
       where: dateFilter ? { createdAt: dateFilter } : undefined,
       select: {
-        id: true, name: true, phone: true, status: true, createdAt: true,
-        managerId: true, managerName: true,
-        zamirId: true,   zamirName: true,
-        zavodId: true,   zavodName: true,
-        ustId: true,     ustName: true,
+        id: true,
+        name: true,
+        phone: true,
+        status: true,
+        createdAt: true,
+        managerId: true,
+        managerName: true,
+        zamirId: true,
+        zamirName: true,
+        zavodId: true,
+        zavodName: true,
+        ustId: true,
+        ustName: true,
         financeTransactions: {
           select: { type: true, amount: true, createdById: true },
         },
@@ -142,17 +162,17 @@ export class FinanceService {
     // ── Barcha qarzdor orderlar (summary uchun) ───────────────────────────────
     const allDebtItems: ReturnType<typeof this.buildDebtItem>[] = [];
     let totalOrderAmount = 0;
-    let totalPaidAmount  = 0;
+    let totalPaidAmount = 0;
 
     for (const order of orders) {
       const item = this.buildDebtItem(order);
       if (item.debtAmount <= 0) continue;
       totalOrderAmount += item.orderAmount;
-      totalPaidAmount  += item.paidAmount;
+      totalPaidAmount += item.paidAmount;
       allDebtItems.push(item);
     }
 
-    const total     = allDebtItems.length;
+    const total = allDebtItems.length;
     const pagedItems = allDebtItems.slice(skip, skip + limit);
 
     return new ResponseDto(
@@ -161,7 +181,7 @@ export class FinanceService {
       {
         dateRange: { from: query.from ?? null, to: query.to ?? null },
         summary: {
-          ordersCount:      total,
+          ordersCount: total,
           totalOrderAmount,
           totalPaidAmount,
           totalDebt: totalOrderAmount - totalPaidAmount,
@@ -179,25 +199,40 @@ export class FinanceService {
   }
 
   private calcSales(txs: TxForSales[]) {
-    let sale = 0, saleAddition = 0, saleCancel = 0;
+    let sale = 0,
+      saleAddition = 0,
+      saleCancel = 0;
 
     for (const tx of txs) {
-      if (tx.type === FinanceTransactionType.SALE)          sale         += tx.amount;
-      else if (tx.type === FinanceTransactionType.SALE_ADDITION) saleAddition += tx.amount;
-      else if (tx.type === FinanceTransactionType.SALE_CANCEL)   saleCancel   += tx.amount;
+      if (tx.type === FinanceTransactionType.SALE) sale += tx.amount;
+      else if (tx.type === FinanceTransactionType.SALE_ADDITION)
+        saleAddition += tx.amount;
+      else if (tx.type === FinanceTransactionType.SALE_CANCEL)
+        saleCancel += tx.amount;
     }
 
-    return { sale, saleAddition, saleCancel, netSale: sale + saleAddition - saleCancel };
+    return {
+      sale,
+      saleAddition,
+      saleCancel,
+      netSale: sale + saleAddition - saleCancel,
+    };
   }
 
   private calcPayments(txs: TxForPayments[]) {
-    let cash = 0, card = 0, refundCash = 0, refundCard = 0;
+    let cash = 0,
+      card = 0,
+      refundCash = 0,
+      refundCard = 0;
 
     for (const tx of txs) {
       const isCash = tx.method === FinanceTransactionMethod.CASH;
       const isCard = tx.method === FinanceTransactionMethod.CARD;
 
-      if (tx.type === FinanceTransactionType.PREPAYMENT || tx.type === FinanceTransactionType.PAYMENT) {
+      if (
+        tx.type === FinanceTransactionType.PREPAYMENT ||
+        tx.type === FinanceTransactionType.PAYMENT
+      ) {
         if (isCash) cash += tx.amount;
         else if (isCard) card += tx.amount;
       } else if (tx.type === FinanceTransactionType.REFUND) {
@@ -223,6 +258,8 @@ export class FinanceService {
       amount: number;
       createdAt: Date;
       orderId: string;
+      imageUrls: string[];
+      comment: string | null;
       createdBy: { id: string; name: string | null; role: string } | null;
       order: { id: string; name: string | null; phone: string | null };
     }[],
@@ -230,7 +267,10 @@ export class FinanceService {
     type OrderItem = {
       orderId: string;
       client: { id: string; name: string | null; phone: string | null };
-      cash: number; card: number; refundCash: number; refundCard: number;
+      cash: number;
+      card: number;
+      refundCash: number;
+      refundCard: number;
       transactions: object[];
     };
 
@@ -240,8 +280,15 @@ export class FinanceService {
       if (!orderMap.has(tx.orderId)) {
         orderMap.set(tx.orderId, {
           orderId: tx.orderId,
-          client: { id: tx.order.id, name: tx.order.name, phone: tx.order.phone },
-          cash: 0, card: 0, refundCash: 0, refundCard: 0,
+          client: {
+            id: tx.order.id,
+            name: tx.order.name,
+            phone: tx.order.phone,
+          },
+          cash: 0,
+          card: 0,
+          refundCash: 0,
+          refundCard: 0,
           transactions: [],
         });
       }
@@ -263,6 +310,7 @@ export class FinanceService {
         type: tx.type,
         amount: tx.amount,
         paymentMethodType: tx.method,
+        imageUrls: tx.imageUrls,
         createdAt: tx.createdAt,
         createdBy: tx.createdBy ?? null,
       });
@@ -281,10 +329,15 @@ export class FinanceService {
   }
 
   private calcPaymentsSummary(
-    items: { cash: number; card: number; refundCash: number; refundCard: number }[],
+    items: {
+      cash: number;
+      card: number;
+      refundCash: number;
+      refundCard: number;
+    }[],
   ) {
-    const cash       = items.reduce((s, i) => s + i.cash,       0);
-    const card       = items.reduce((s, i) => s + i.card,       0);
+    const cash = items.reduce((s, i) => s + i.cash, 0);
+    const card = items.reduce((s, i) => s + i.card, 0);
     const refundCash = items.reduce((s, i) => s + i.refundCash, 0);
     const refundCard = items.reduce((s, i) => s + i.refundCard, 0);
 
@@ -300,9 +353,17 @@ export class FinanceService {
 
   // Barcha transaksiyalar ro'yxatidan to'lov summarysi (pagination uchun)
   private calcSummaryFromTxList(
-    txs: { type: FinanceTransactionType; method: FinanceTransactionMethod | null; amount: number; orderId: string }[],
+    txs: {
+      type: FinanceTransactionType;
+      method: FinanceTransactionMethod | null;
+      amount: number;
+      orderId: string;
+    }[],
   ) {
-    let cash = 0, card = 0, refundCash = 0, refundCard = 0;
+    let cash = 0,
+      card = 0,
+      refundCash = 0,
+      refundCard = 0;
     const orderIds = new Set<string>();
 
     for (const tx of txs) {
@@ -330,27 +391,40 @@ export class FinanceService {
   }
 
   private buildDebtItem(order: {
-    id: string; name: string | null; phone: string | null;
-    status: string; createdAt: Date;
-    managerId: string | null; managerName: string | null;
-    zamirId: string | null;   zamirName: string | null;
-    zavodId: string | null;   zavodName: string | null;
-    ustId: string | null;     ustName: string | null;
-    financeTransactions: { type: FinanceTransactionType; amount: number; createdById: string | null }[];
+    id: string;
+    name: string | null;
+    phone: string | null;
+    status: string;
+    createdAt: Date;
+    managerId: string | null;
+    managerName: string | null;
+    zamirId: string | null;
+    zamirName: string | null;
+    zavodId: string | null;
+    zavodName: string | null;
+    ustId: string | null;
+    ustName: string | null;
+    financeTransactions: {
+      type: FinanceTransactionType;
+      amount: number;
+      createdById: string | null;
+    }[];
   }) {
     const txs = order.financeTransactions;
 
     const orderAmount = txs.reduce((sum, tx) => {
-      if (tx.type === FinanceTransactionType.SALE)           return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.SALE_ADDITION)  return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.SALE_CANCEL)    return sum - tx.amount;
+      if (tx.type === FinanceTransactionType.SALE) return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.SALE_ADDITION)
+        return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.SALE_CANCEL)
+        return sum - tx.amount;
       return sum;
     }, 0);
 
     const paidAmount = txs.reduce((sum, tx) => {
       if (tx.type === FinanceTransactionType.PREPAYMENT) return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.PAYMENT)    return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.REFUND)     return sum - tx.amount;
+      if (tx.type === FinanceTransactionType.PAYMENT) return sum + tx.amount;
+      if (tx.type === FinanceTransactionType.REFUND) return sum - tx.amount;
       return sum;
     }, 0);
 
@@ -358,9 +432,9 @@ export class FinanceService {
 
     const workers = [
       { id: order.managerId, name: order.managerName, role: 'MANAGER' },
-      { id: order.zamirId,   name: order.zamirName,   role: 'ZAMIR'   },
-      { id: order.zavodId,   name: order.zavodName,   role: 'ZAVOD'   },
-      { id: order.ustId,     name: order.ustName,     role: 'USTANOVCHIK' },
+      { id: order.zamirId, name: order.zamirName, role: 'ZAMIR' },
+      { id: order.zavodId, name: order.zavodName, role: 'ZAVOD' },
+      { id: order.ustId, name: order.ustName, role: 'USTANOVCHIK' },
     ]
       .filter((w) => w.id !== null)
       .map((w) => ({ ...w, amount: workerAmountMap.get(w.id!) ?? 0 }));
@@ -378,7 +452,11 @@ export class FinanceService {
   }
 
   private buildWorkerAmountMap(
-    txs: { type: FinanceTransactionType; amount: number; createdById: string | null }[],
+    txs: {
+      type: FinanceTransactionType;
+      amount: number;
+      createdById: string | null;
+    }[],
   ): Map<string, number> {
     const map = new Map<string, number>();
 
@@ -387,7 +465,10 @@ export class FinanceService {
 
       const current = map.get(tx.createdById) ?? 0;
 
-      if (tx.type === FinanceTransactionType.PREPAYMENT || tx.type === FinanceTransactionType.PAYMENT) {
+      if (
+        tx.type === FinanceTransactionType.PREPAYMENT ||
+        tx.type === FinanceTransactionType.PAYMENT
+      ) {
         map.set(tx.createdById, current + tx.amount);
       } else if (tx.type === FinanceTransactionType.REFUND) {
         map.set(tx.createdById, current - tx.amount);
@@ -404,10 +485,18 @@ export class FinanceService {
 
     const dateFilter = this.buildDateFilter(query.from, query.to);
     const txSelect = {
-      id: true, type: true, method: true, amount: true, comment: true, imageUrls: true,
-      createdAt: true, handedOver: true, handedOverAt: true, handedOverByName: true,
+      id: true,
+      type: true,
+      method: true,
+      amount: true,
+      comment: true,
+      imageUrls: true,
+      createdAt: true,
+      handedOver: true,
+      handedOverAt: true,
+      handedOverByName: true,
       orderId: true,
-      order:     { select: { id: true, name: true, phone: true } },
+      order: { select: { id: true, name: true, phone: true } },
       createdBy: { select: { id: true, name: true, role: true } },
     };
 
@@ -415,13 +504,18 @@ export class FinanceService {
     //    handedOver filtri shu yerda ishlaydi
     const collectedTxs = await this.prisma.financeTransaction.findMany({
       where: {
-        type:     { in: [FinanceTransactionType.PREPAYMENT, FinanceTransactionType.PAYMENT] },
-        ...(dateFilter          && { createdAt: dateFilter }),
-        ...(query.userId        && { createdById: query.userId }),
-        ...(query.pending === true  && { handedOver: false }),
-        ...(query.pending === false && { handedOver: true  }),
+        type: {
+          in: [
+            FinanceTransactionType.PREPAYMENT,
+            FinanceTransactionType.PAYMENT,
+          ],
+        },
+        ...(dateFilter && { createdAt: dateFilter }),
+        ...(query.userId && { createdById: query.userId }),
+        ...(query.pending === true && { handedOver: false }),
+        ...(query.pending === false && { handedOver: true }),
       },
-      select:  txSelect,
+      select: txSelect,
       orderBy: { createdAt: 'asc' },
     });
 
@@ -429,36 +523,44 @@ export class FinanceService {
     //    Refund handedOver filtriga bog'liq emas — har doim ko'rsatiladi (net uchun)
     const orderIds = [...new Set(collectedTxs.map((t) => t.orderId))];
 
-    const refundTxs = orderIds.length > 0
-      ? await this.prisma.financeTransaction.findMany({
-          where: {
-            orderId: { in: orderIds },
-            type:    FinanceTransactionType.REFUND,
-          },
-          select:  txSelect,
-          orderBy: { createdAt: 'asc' },
-        })
-      : [];
+    const refundTxs =
+      orderIds.length > 0
+        ? await this.prisma.financeTransaction.findMany({
+            where: {
+              orderId: { in: orderIds },
+              type: FinanceTransactionType.REFUND,
+            },
+            select: txSelect,
+            orderBy: { createdAt: 'asc' },
+          })
+        : [];
 
     // ── Worker bucket tipi ────────────────────────────────────────────────────
     type Bucket = {
       collectedCash: number;
       collectedCard: number;
-      refundCash:    number;   // Orderdan qaytarilgan CASH (kim kiritganidan qat'i nazar)
-      refundCard:    number;
-      netCash:       number;   // collectedCash - refundCash
-      netCard:       number;
-      net:           number;
-      items:         object[];
+      refundCash: number; // Orderdan qaytarilgan CASH (kim kiritganidan qat'i nazar)
+      refundCard: number;
+      netCash: number; // collectedCash - refundCash
+      netCard: number;
+      net: number;
+      items: object[];
     };
     type WorkerEntry = {
-      userId: string; name: string | null; role: string | null;
-      pending: Bucket; done: Bucket;
+      userId: string;
+      name: string | null;
+      role: string | null;
+      pending: Bucket;
+      done: Bucket;
     };
     const emptyBucket = (): Bucket => ({
-      collectedCash: 0, collectedCard: 0,
-      refundCash:    0, refundCard:    0,
-      netCash:       0, netCard:       0, net: 0,
+      collectedCash: 0,
+      collectedCard: 0,
+      refundCash: 0,
+      refundCard: 0,
+      netCash: 0,
+      netCard: 0,
+      net: 0,
       items: [],
     });
 
@@ -472,17 +574,33 @@ export class FinanceService {
     }
 
     // Worker va bucket ni lazim bo'lganda yaratish
-    const getOrCreateBucket = (uid: string, name: string | null, uRole: string | null, handed: boolean) => {
+    const getOrCreateBucket = (
+      uid: string,
+      name: string | null,
+      uRole: string | null,
+      handed: boolean,
+    ) => {
       if (!workerMap.has(uid)) {
-        workerMap.set(uid, { userId: uid, name, role: uRole, pending: emptyBucket(), done: emptyBucket() });
+        workerMap.set(uid, {
+          userId: uid,
+          name,
+          role: uRole,
+          pending: emptyBucket(),
+          done: emptyBucket(),
+        });
       }
       return handed ? workerMap.get(uid)!.done : workerMap.get(uid)!.pending;
     };
 
     // ── PREPAYMENT / PAYMENT → ishchiga tegishli ─────────────────────────────
     for (const tx of collectedTxs) {
-      const uid    = tx.createdBy?.id ?? 'unknown';
-      const bucket = getOrCreateBucket(uid, tx.createdBy?.name ?? null, tx.createdBy?.role ?? null, tx.handedOver);
+      const uid = tx.createdBy?.id ?? 'unknown';
+      const bucket = getOrCreateBucket(
+        uid,
+        tx.createdBy?.name ?? null,
+        tx.createdBy?.role ?? null,
+        tx.handedOver,
+      );
       const isCash = tx.method === FinanceTransactionMethod.CASH;
       const isCard = tx.method === FinanceTransactionMethod.CARD;
 
@@ -490,13 +608,21 @@ export class FinanceService {
       if (isCard) bucket.collectedCard += tx.amount;
 
       bucket.items.push({
-        transactionId: tx.id, orderId: tx.orderId,
-        clientName: tx.order.name, clientPhone: tx.order.phone,
-        type: tx.type, method: tx.method, amount: tx.amount,
+        transactionId: tx.id,
+        orderId: tx.orderId,
+        clientName: tx.order.name,
+        clientPhone: tx.order.phone,
+        type: tx.type,
+        method: tx.method,
+        amount: tx.amount,
         isRefund: false,
-        comment: tx.comment, imageUrls: tx.imageUrls, createdAt: tx.createdAt,
+        comment: tx.comment,
+        imageUrls: tx.imageUrls,
+        createdAt: tx.createdAt,
         createdBy: tx.createdBy ?? null,
-        handedOver: tx.handedOver, handedOverAt: tx.handedOverAt, receivedBy: tx.handedOverByName,
+        handedOver: tx.handedOver,
+        handedOverAt: tx.handedOverAt,
+        receivedBy: tx.handedOverByName,
       });
     }
 
@@ -510,20 +636,33 @@ export class FinanceService {
       const ownerTx = collectedTxs.find((c) => c.orderId === tx.orderId);
       if (!ownerTx?.createdBy) continue;
 
-      const uid    = ownerTx.createdBy.id;
-      const bucket = getOrCreateBucket(uid, ownerTx.createdBy.name ?? null, ownerTx.createdBy.role ?? null, false);
+      const uid = ownerTx.createdBy.id;
+      const bucket = getOrCreateBucket(
+        uid,
+        ownerTx.createdBy.name ?? null,
+        ownerTx.createdBy.role ?? null,
+        false,
+      );
 
       if (isCash) bucket.refundCash += tx.amount;
       if (isCard) bucket.refundCard += tx.amount;
 
       bucket.items.push({
-        transactionId: tx.id, orderId: tx.orderId,
-        clientName: tx.order.name, clientPhone: tx.order.phone,
-        type: tx.type, method: tx.method, amount: tx.amount,
+        transactionId: tx.id,
+        orderId: tx.orderId,
+        clientName: tx.order.name,
+        clientPhone: tx.order.phone,
+        type: tx.type,
+        method: tx.method,
+        amount: tx.amount,
         isRefund: true,
-        comment: tx.comment, imageUrls: tx.imageUrls, createdAt: tx.createdAt,
+        comment: tx.comment,
+        imageUrls: tx.imageUrls,
+        createdAt: tx.createdAt,
         createdBy: tx.createdBy ?? null,
-        handedOver: tx.handedOver, handedOverAt: tx.handedOverAt, receivedBy: tx.handedOverByName,
+        handedOver: tx.handedOver,
+        handedOverAt: tx.handedOverAt,
+        receivedBy: tx.handedOverByName,
       });
     }
 
@@ -532,31 +671,34 @@ export class FinanceService {
       for (const bucket of [w.pending, w.done]) {
         bucket.netCash = bucket.collectedCash - bucket.refundCash;
         bucket.netCard = bucket.collectedCard - bucket.refundCard;
-        bucket.net     = bucket.netCash + bucket.netCard;
+        bucket.net = bucket.netCash + bucket.netCard;
       }
     }
 
     // ── Summary (barcha workers bo'yicha net summalar) ────────────────────────
     const allWorkers = Array.from(workerMap.values());
     const summary = {
-      pendingNet:       allWorkers.reduce((s, w) => s + w.pending.net,          0),
-      pendingNetCash:   allWorkers.reduce((s, w) => s + w.pending.netCash,      0),
-      pendingNetCard:   allWorkers.reduce((s, w) => s + w.pending.netCard,      0),
-      pendingRefund:    allWorkers.reduce((s, w) => s + w.pending.refundCash + w.pending.refundCard, 0),
-      doneNet:          allWorkers.reduce((s, w) => s + w.done.net,             0),
-      doneNetCash:      allWorkers.reduce((s, w) => s + w.done.netCash,         0),
-      doneNetCard:      allWorkers.reduce((s, w) => s + w.done.netCard,         0),
+      pendingNet: allWorkers.reduce((s, w) => s + w.pending.net, 0),
+      pendingNetCash: allWorkers.reduce((s, w) => s + w.pending.netCash, 0),
+      pendingNetCard: allWorkers.reduce((s, w) => s + w.pending.netCard, 0),
+      pendingRefund: allWorkers.reduce(
+        (s, w) => s + w.pending.refundCash + w.pending.refundCard,
+        0,
+      ),
+      doneNet: allWorkers.reduce((s, w) => s + w.done.net, 0),
+      doneNetCash: allWorkers.reduce((s, w) => s + w.done.netCash, 0),
+      doneNetCard: allWorkers.reduce((s, w) => s + w.done.netCard, 0),
     };
 
     // ── Pagination ────────────────────────────────────────────────────────────
-    const page   = query.page  ?? 1;
-    const limit  = query.limit ?? 20;
-    const skip   = (page - 1) * limit;
-    const total  = allWorkers.length;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const total = allWorkers.length;
     const pagedWorkers = allWorkers.slice(skip, skip + limit);
 
     const filter: Record<string, unknown> = {};
-    if (query.userId  !== undefined) filter.userId  = query.userId;
+    if (query.userId !== undefined) filter.userId = query.userId;
     if (query.pending !== undefined) filter.pending = query.pending;
 
     return new ResponseDto(
@@ -572,17 +714,26 @@ export class FinanceService {
     );
   }
 
-  async confirmHandover(
-    sub: string,
-    body: ConfirmHandoverDto,
-  ) {
+  async confirmHandover(sub: string, body: ConfirmHandoverDto) {
     // REFUND ham tasdiqlanishi mumkin — net hisob-kitob uchun
     const existing = await this.prisma.financeTransaction.findMany({
       where: {
-        id:   { in: body.transactionIds },
-        type: { in: [FinanceTransactionType.PREPAYMENT, FinanceTransactionType.PAYMENT, FinanceTransactionType.REFUND] },
+        id: { in: body.transactionIds },
+        type: {
+          in: [
+            FinanceTransactionType.PREPAYMENT,
+            FinanceTransactionType.PAYMENT,
+            FinanceTransactionType.REFUND,
+          ],
+        },
       },
-      select: { id: true, handedOver: true, type: true, amount: true, method: true },
+      select: {
+        id: true,
+        handedOver: true,
+        type: true,
+        amount: true,
+        method: true,
+      },
     });
 
     if (existing.length === 0) {
@@ -595,24 +746,25 @@ export class FinanceService {
     }
 
     const receiver = await this.prisma.user.findUnique({
-      where:  { id: sub },
+      where: { id: sub },
       select: { name: true },
     });
 
     await this.prisma.financeTransaction.updateMany({
       where: { id: { in: body.transactionIds } },
-      data:  {
-        handedOver:       true,
-        handedOverAt:     new Date(),
-        handedOverById:   sub,
+      data: {
+        handedOver: true,
+        handedOverAt: new Date(),
+        handedOverById: sub,
         handedOverByName: receiver?.name ?? null,
       },
     });
 
     // Tasdiqlangan transaksiyalarning net summasi
-    let netCash = 0, netCard = 0;
+    let netCash = 0,
+      netCard = 0;
     for (const tx of existing) {
-      const sign   = tx.type === FinanceTransactionType.REFUND ? -1 : 1;
+      const sign = tx.type === FinanceTransactionType.REFUND ? -1 : 1;
       const isCash = tx.method === FinanceTransactionMethod.CASH;
       const isCard = tx.method === FinanceTransactionMethod.CARD;
       if (isCash) netCash += sign * tx.amount;
@@ -620,7 +772,7 @@ export class FinanceService {
     }
 
     return new ResponseDto(true, 'Muvaffaqiyatli tasdiqlandi', {
-      confirmed:  existing.length,
+      confirmed: existing.length,
       receivedBy: receiver?.name ?? null,
       netCash,
       netCard,
@@ -633,13 +785,18 @@ export class FinanceService {
 
     const toUtc = (dateStr: string, endOfDay = false) => {
       const d = new Date(dateStr);
-      d.setUTCHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+      d.setUTCHours(
+        endOfDay ? 23 : 0,
+        endOfDay ? 59 : 0,
+        endOfDay ? 59 : 0,
+        endOfDay ? 999 : 0,
+      );
       return d;
     };
 
     const range: any = {};
     if (from) range.gte = toUtc(from);
-    if (to)   range.lte = toUtc(to, true);
+    if (to) range.lte = toUtc(to, true);
     return range;
   }
 }
