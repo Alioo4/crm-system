@@ -282,6 +282,7 @@ export class OrderService {
             method: true,
             amount: true,
             comment: true,
+            imageUrls: true,
             createdBy: {
               select: { id: true, name: true, phone: true, role: true },
             },
