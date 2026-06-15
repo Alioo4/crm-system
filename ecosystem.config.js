@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
       {
-        name: 'nest-api-dev',
+        name: 'nest-api-stage',
         script: 'dist/src/main.js',
   
         instances: 1,
@@ -20,8 +20,8 @@ module.exports = {
         merge_logs: true,
   
         env: {
-          NODE_ENV: 'development',
-          PORT: 7007,
+          NODE_ENV: 'stage',
+          PORT: 9090,
         },
       },
     ],
