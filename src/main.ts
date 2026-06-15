@@ -22,7 +22,7 @@ async function bootstrap() {
     )
     .setVersion('1.0')
     .addBearerAuth()
-    .addServer('/dev') 
+    .addServer('/stage') 
     .addTag('Authentication', 'User login, registration, and token management')
     .addTag('Users', 'Manage CRM system users and roles')
     .addTag('Clients', 'Customer data management')
