@@ -35,6 +35,7 @@ model Order {
   status            Status    @default(MANAGER)
   getPrePaymentDate DateTime? @map("get_pre_payment_date")
   getAllPaymentDate DateTime? @map("get_all_payment_date")
+  isNewOrder        Boolean   @default(true) @map("is_new_order")
 
   managerId    String? @map("manager_id") @db.Uuid
   managerName  String? @map("manager_name") @db.VarChar(128)
