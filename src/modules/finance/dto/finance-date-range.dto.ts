@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsDateString, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class FinanceDateRangeDto {
   @ApiPropertyOptional({ example: '2026-05-01' })
@@ -21,14 +28,33 @@ export class FinanceDateRangeDto {
   @IsOptional()
   userId?: string;
 
-  @ApiPropertyOptional({ example: 1, description: 'Sahifa raqami (1 dan boshlanadi)' })
+  @ApiPropertyOptional({
+    description: 'Filter by order type: true = new orders, false = old orders',
+    example: true,
+  })
+  @Transform(({ value }) => {
+    if (value === true || value === 'true') return true;
+    if (value === false || value === 'false') return false;
+    return undefined;
+  })
+  @IsBoolean()
+  @IsOptional()
+  isNewOrder?: boolean;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Sahifa raqami (1 dan boshlanadi)',
+  })
   @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(1)
   @IsOptional()
   page?: number = 1;
 
-  @ApiPropertyOptional({ example: 20, description: 'Sahifadagi elementlar soni' })
+  @ApiPropertyOptional({
+    example: 20,
+    description: 'Sahifadagi elementlar soni',
+  })
   @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(1)

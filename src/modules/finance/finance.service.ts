@@ -39,6 +39,9 @@ export class FinanceService {
       where: {
         ...(dateFilter && { createdAt: dateFilter }),
         ...(query.userId && { createdById: query.userId }),
+        ...(query.isNewOrder !== undefined && {
+          order: { isNewOrder: query.isNewOrder },
+        }),
       },
       select: { type: true, method: true, amount: true, orderId: true },
     });
@@ -49,7 +52,14 @@ export class FinanceService {
 
     return new ResponseDto(true, 'Successfully found!', {
       dateRange: { from: query.from ?? null, to: query.to ?? null },
-      ...(query.userId && { filter: { userId: query.userId } }),
+      ...((query.userId || query.isNewOrder !== undefined) && {
+        filter: {
+          ...(query.userId && { userId: query.userId }),
+          ...(query.isNewOrder !== undefined && {
+            isNewOrder: query.isNewOrder,
+          }),
+        },
+      }),
       summary: {
         ordersCount,
         sales,
@@ -74,6 +84,9 @@ export class FinanceService {
       ...(dateFilter && { createdAt: dateFilter }),
       type: { in: PAYMENT_TYPES },
       ...(query.userId && { createdById: query.userId }),
+      ...(query.isNewOrder !== undefined && {
+        order: { isNewOrder: query.isNewOrder },
+      }),
     };
 
     // ── Summary: barcha transaksiyalardan kichik select ───────────────────────
@@ -117,7 +130,14 @@ export class FinanceService {
       'Successfully found!',
       {
         dateRange: { from: query.from ?? null, to: query.to ?? null },
-        ...(query.userId && { filter: { userId: query.userId } }),
+        ...((query.userId || query.isNewOrder !== undefined) && {
+          filter: {
+            ...(query.userId && { userId: query.userId }),
+            ...(query.isNewOrder !== undefined && {
+              isNewOrder: query.isNewOrder,
+            }),
+          },
+        }),
         summary,
         items,
       },
@@ -137,7 +157,12 @@ export class FinanceService {
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
     const orders = await this.prisma.order.findMany({
-      where: dateFilter ? { createdAt: dateFilter } : undefined,
+      where: {
+        ...(dateFilter && { createdAt: dateFilter }),
+        ...(query.isNewOrder !== undefined && {
+          isNewOrder: query.isNewOrder,
+        }),
+      },
       select: {
         id: true,
         name: true,
@@ -180,6 +205,9 @@ export class FinanceService {
       'Successfully found!',
       {
         dateRange: { from: query.from ?? null, to: query.to ?? null },
+        ...(query.isNewOrder !== undefined && {
+          filter: { isNewOrder: query.isNewOrder },
+        }),
         summary: {
           ordersCount: total,
           totalOrderAmount,
@@ -512,6 +540,9 @@ export class FinanceService {
         },
         ...(dateFilter && { createdAt: dateFilter }),
         ...(query.userId && { createdById: query.userId }),
+        ...(query.isNewOrder !== undefined && {
+          order: { isNewOrder: query.isNewOrder },
+        }),
         ...(query.pending === true && { handedOver: false }),
         ...(query.pending === false && { handedOver: true }),
       },
@@ -699,6 +730,7 @@ export class FinanceService {
 
     const filter: Record<string, unknown> = {};
     if (query.userId !== undefined) filter.userId = query.userId;
+    if (query.isNewOrder !== undefined) filter.isNewOrder = query.isNewOrder;
     if (query.pending !== undefined) filter.pending = query.pending;
 
     return new ResponseDto(

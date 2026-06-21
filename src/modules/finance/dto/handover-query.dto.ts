@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsDateString, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class HandoverQueryDto {
   @ApiPropertyOptional({ example: '2026-06-01' })
@@ -22,11 +29,25 @@ export class HandoverQueryDto {
   userId?: string;
 
   @ApiPropertyOptional({
-    description: 'true → only pending | false → only handed-over | (none) → all',
+    description: 'Filter by order type: true = new orders, false = old orders',
     example: true,
   })
   @Transform(({ value }) => {
-    if (value === 'true')  return true;
+    if (value === true || value === 'true') return true;
+    if (value === false || value === 'false') return false;
+    return undefined;
+  })
+  @IsBoolean()
+  @IsOptional()
+  isNewOrder?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'true → only pending | false → only handed-over | (none) → all',
+    example: true,
+  })
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
     if (value === 'false') return false;
     return undefined;
   })
