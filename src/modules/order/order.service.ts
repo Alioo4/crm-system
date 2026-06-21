@@ -39,6 +39,7 @@ export class OrderService {
       status,
       hashtagIds,
       payments,
+      home,
       ...rest
     } = createOrderDto;
 
@@ -87,6 +88,13 @@ export class OrderService {
         managerName: findUseer?.name || null,
         managerphone: findUseer?.phone || null,
         ...rest,
+        orderFeatures: home?.length
+          ? {
+              createMany: {
+                data: home.map(({ key, value }) => ({ key, value })),
+              },
+            }
+          : undefined,
         hashtags: hashtagIds?.length
           ? { connect: hashtagIds.map((hid) => ({ id: hid })) }
           : undefined,
@@ -228,6 +236,7 @@ export class OrderService {
           orderStatus: true,
           roomMeasurement: true,
           currencyOrder: true,
+          orderFeatures: true,
           financeTransactions: {
             select: {
               id: true,
@@ -274,6 +283,7 @@ export class OrderService {
         orderStatus: true,
         roomMeasurement: true,
         currencyOrder: true,
+        orderFeatures: true,
         financeTransactions: {
           select: {
             id: true,
@@ -392,8 +402,14 @@ export class OrderService {
         });
       }
 
-      const { payments, startCurrency, endCurrency, hashtagIds, ...orderData } =
-        updateOrderDto;
+      const {
+        payments,
+        startCurrency,
+        endCurrency,
+        hashtagIds,
+        home,
+        ...orderData
+      } = updateOrderDto;
 
       // Record every status transition
       if (status && status !== findOrder.status) {
@@ -418,6 +434,16 @@ export class OrderService {
           ...(hashtagIds !== undefined && {
             hashtags: { set: hashtagIds.map((hid) => ({ id: hid })) },
           }),
+          ...(home !== undefined && {
+            orderFeatures: {
+              deleteMany: {},
+              ...(home.length > 0 && {
+                createMany: {
+                  data: home.map(({ key, value }) => ({ key, value })),
+                },
+              }),
+            },
+          }),
         },
         include: {
           region: true,
@@ -425,6 +451,7 @@ export class OrderService {
           orderStatus: true,
           roomMeasurement: true,
           currencyOrder: true,
+          orderFeatures: true,
           hashtags: true,
         },
       });
@@ -765,6 +792,7 @@ export class OrderService {
         social: true,
         orderStatus: true,
         roomMeasurement: true,
+        orderFeatures: true,
       },
       orderBy: { createdAt: 'desc' },
     });

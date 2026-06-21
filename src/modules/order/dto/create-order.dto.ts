@@ -11,7 +11,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PaymentDto } from './update-order.dto';
+import { OrderHomeFeatureDto, PaymentDto } from './update-order.dto';
 
 export enum Status {
   MANAGER = 'MANAGER',
@@ -30,7 +30,7 @@ export class CreateOrderDto {
 
   @ApiPropertyOptional({ description: 'Phone number', example: '998901234567' })
   @IsString()
-  @IsNotEmpty() 
+  @IsNotEmpty()
   phone: string;
 
   @ApiPropertyOptional({
@@ -137,7 +137,12 @@ export class CreateOrderDto {
     type: [PaymentDto],
     example: [
       { amount: 1200000, paymentMethod: 'CASH', paymentType: 'SALE' },
-      { amount: 300000, paymentMethod: 'CASH', paymentType: 'PREPAYMENT', comment: 'Avans' },
+      {
+        amount: 300000,
+        paymentMethod: 'CASH',
+        paymentType: 'PREPAYMENT',
+        comment: 'Avans',
+      },
     ],
   })
   @IsOptional()
@@ -145,6 +150,20 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => PaymentDto)
   payments?: PaymentDto[];
+
+  @ApiPropertyOptional({
+    description: 'Home feature list saved to order_feature',
+    type: [OrderHomeFeatureDto],
+    example: [
+      { key: 'floor', value: '2' },
+      { key: 'entrance', value: 'left side' },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderHomeFeatureDto)
+  home?: OrderHomeFeatureDto[];
 }
 
 export class ResponseOrderPosDto<T = any> {

@@ -70,6 +70,7 @@ model Order {
 
   roomMeasurement     RoomMeasurement[]
   currencyOrder       CurrencyOrder[]
+  orderFeatures       OrderFeature[]
   financeTransactions FinanceTransaction[]
   hashtags            Hashtag[]
   statusHistory       OrderStatusHistory[]
@@ -86,13 +87,24 @@ model OrderStatusHistory {
   fromStatus Status? @map("from_status")
   toStatus   Status  @map("to_status")
 
-  actorId   String? @map("actor_id")   @db.Uuid
+  actorId   String? @map("actor_id") @db.Uuid
   actorName String? @map("actor_name") @db.VarChar(128)
   actorRole String? @map("actor_role") @db.VarChar(64)
 
   note String? @db.VarChar(256)
 
   @@map("order_status_history")
+}
+
+model OrderFeature {
+  id    String @id @default(uuid())
+  key   String @db.VarChar(128)
+  value String @db.VarChar(512)
+
+  orderId String @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_feature")
 }
 
 model OrderStatus {
@@ -216,9 +228,9 @@ model CurrencyOrder {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  note String? @db.VarChar(128)
-  card Int? @default(0) @db.Integer
-  cash Int? @default(0) @db.Integer
+  note         String? @db.VarChar(128)
+  card         Int?    @default(0) @db.Integer
+  cash         Int?    @default(0) @db.Integer
   isPrePayment Boolean @map("pre_payment")
 
   orederId String @map("order_id") @db.Uuid
@@ -231,21 +243,21 @@ model FinanceTransaction {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
-  type   FinanceTransactionType
-  method FinanceTransactionMethod?
-  amount Int  
-  comment String?                @db.VarChar(1024)
-  imageUrls String[]             @db.VarChar(1024) @default([])
+  type      FinanceTransactionType
+  method    FinanceTransactionMethod?
+  amount    Int
+  comment   String?                   @db.VarChar(1024)
+  imageUrls String[]                  @default([]) @db.VarChar(1024)
 
-  createdById   String? @map("created_by_id") @db.Uuid
-  createdBy     User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String? @map("created_by_id") @db.Uuid
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   orderId String @map("order_id") @db.Uuid
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   handedOver       Boolean   @default(false) @map("handed_over")
   handedOverAt     DateTime? @map("handed_over_at")
-  handedOverById   String?   @map("handed_over_by_id")   @db.Uuid
+  handedOverById   String?   @map("handed_over_by_id") @db.Uuid
   handedOverByName String?   @map("handed_over_by_name") @db.VarChar(128)
 
   @@map("finance_transaction")
@@ -275,11 +287,11 @@ enum Status {
 
 enum FinanceTransactionType {
   SALE
-  SALE_ADDITION 
-  SALE_CANCEL   
-  PREPAYMENT  
-  PAYMENT       
-  REFUND        
+  SALE_ADDITION
+  SALE_CANCEL
+  PREPAYMENT
+  PAYMENT
+  REFUND
 }
 
 enum FinanceTransactionMethod {

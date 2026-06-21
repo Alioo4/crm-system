@@ -10,6 +10,7 @@ import {
   IsArray,
   ValidateNested,
   IsInt,
+  MaxLength,
 } from 'class-validator';
 
 export enum Status {
@@ -38,7 +39,7 @@ export enum PaymentMethod {
   CASH = 'CASH',
   CARD = 'CARD',
 }
- 
+
 export enum PaymentTypeEnum {
   SALE = 'SALE',
   SALE_ADDITION = 'SALE_ADDITION',
@@ -86,6 +87,24 @@ export class PaymentDto {
   @IsArray()
   @IsString({ each: true })
   imageUrls?: string[];
+}
+
+export class OrderHomeFeatureDto {
+  @ApiProperty({
+    example: 'floor',
+    maxLength: 128,
+  })
+  @IsString()
+  @MaxLength(128)
+  key: string;
+
+  @ApiProperty({
+    example: '2',
+    maxLength: 512,
+  })
+  @IsString()
+  @MaxLength(512)
+  value: string;
 }
 
 export class UpdateOrderDto {
@@ -256,7 +275,10 @@ export class UpdateOrderDto {
         paymentMethod: 'CARD',
         paymentType: 'PREPAYMENT',
         comment: 'Karta orqali avans olindi',
-        imageUrls: ['https://pub-xxx.r2.dev/images/uuid2.jpg', 'https://pub-xxx.r2.dev/images/uuid3.jpg'],
+        imageUrls: [
+          'https://pub-xxx.r2.dev/images/uuid2.jpg',
+          'https://pub-xxx.r2.dev/images/uuid3.jpg',
+        ],
       },
     ],
   })
@@ -265,6 +287,21 @@ export class UpdateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => PaymentDto)
   payments?: PaymentDto[];
+
+  @ApiPropertyOptional({
+    description:
+      'Home feature list. If sent on update, replaces existing order features.',
+    type: [OrderHomeFeatureDto],
+    example: [
+      { key: 'floor', value: '2' },
+      { key: 'entrance', value: 'left side' },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderHomeFeatureDto)
+  home?: OrderHomeFeatureDto[];
 
   @ApiPropertyOptional({
     description: 'Hashtag IDs to set (replaces existing list)',
