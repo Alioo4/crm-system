@@ -96,6 +96,29 @@ async function main() {
         delete: true,
       },
     }),
+    prisma.permissionAll.upsert({
+      where: { path: 'services' },
+      update: {},
+      create: {
+        path: 'services',
+        get: true,
+        post: false,
+        patch: false,
+        delete: false,
+      },
+    }),
+    // Invoice endpointlari `/orders/:orderId/invoice` — pathRoute = 'orders'
+    prisma.permissionAll.upsert({
+      where: { path: 'orders' },
+      update: {},
+      create: {
+        path: 'orders',
+        get: true,
+        post: true,
+        patch: true,
+        delete: false,
+      },
+    }),
     prisma.user.upsert({
       where: { phone: '998332218888' },
       update: {},

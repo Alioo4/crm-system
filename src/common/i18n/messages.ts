@@ -35,6 +35,15 @@ export const MSG = {
   HANDOVER_NOT_FOUND:    'HANDOVER_NOT_FOUND',
   HANDOVER_ALREADY_DONE: 'HANDOVER_ALREADY_DONE',
 
+  // Services & Invoice
+  SERVICE_NOT_FOUND:           'SERVICE_NOT_FOUND',
+  INVOICE_NOT_FOUND:           'INVOICE_NOT_FOUND',
+  INVOICE_ALREADY_EXISTS:      'INVOICE_ALREADY_EXISTS',
+  INVOICE_ITEMS_REQUIRED:      'INVOICE_ITEMS_REQUIRED',
+  DISCOUNT_PERCENT_RANGE:      'DISCOUNT_PERCENT_RANGE',
+  DISCOUNT_EXCEEDS_SUBTOTAL:   'DISCOUNT_EXCEEDS_SUBTOTAL',
+  DISCOUNT_EXCEEDS_ITEMS_TOTAL:'DISCOUNT_EXCEEDS_ITEMS_TOTAL',
+
   // Common
   PERMISSION_DENIED: 'PERMISSION_DENIED',
 } as const;
@@ -75,6 +84,14 @@ const uz: Translations = {
   HANDOVER_NOT_FOUND:    "To'lov topilmadi",
   HANDOVER_ALREADY_DONE: "Bu to'lov allaqachon topshirilgan",
 
+  SERVICE_NOT_FOUND:            "Xizmat topilmadi",
+  INVOICE_NOT_FOUND:            "Invoice mavjud emas",
+  INVOICE_ALREADY_EXISTS:       "Bu buyurtmada invoice allaqachon mavjud",
+  INVOICE_ITEMS_REQUIRED:       "Kamida bitta xizmat kiritilishi shart",
+  DISCOUNT_PERCENT_RANGE:       "Foizli chegirma 0 dan 100 gacha bo'lishi kerak",
+  DISCOUNT_EXCEEDS_SUBTOTAL:    "Chegirma xizmat summasidan oshib ketmoqda",
+  DISCOUNT_EXCEEDS_ITEMS_TOTAL: "Chegirma umumiy summadan oshib ketmoqda",
+
   PERMISSION_DENIED: "Ruxsat yo'q",
 };
 
@@ -109,6 +126,14 @@ const ru: Translations = {
 
   HANDOVER_NOT_FOUND:    "Платёж не найден",
   HANDOVER_ALREADY_DONE: "Этот платёж уже передан",
+
+  SERVICE_NOT_FOUND:            "Услуга не найдена",
+  INVOICE_NOT_FOUND:            "Счёт не существует",
+  INVOICE_ALREADY_EXISTS:       "Счёт для этого заказа уже существует",
+  INVOICE_ITEMS_REQUIRED:       "Необходимо указать хотя бы одну услугу",
+  DISCOUNT_PERCENT_RANGE:       "Процентная скидка должна быть от 0 до 100",
+  DISCOUNT_EXCEEDS_SUBTOTAL:    "Скидка превышает сумму услуги",
+  DISCOUNT_EXCEEDS_ITEMS_TOTAL: "Скидка превышает общую сумму",
 
   PERMISSION_DENIED: "Доступ запрещён",
 };
