@@ -17,6 +17,7 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { ServicesModule } from './modules/services/services.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
+import { ManagementModule } from './modules/management/management.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { InvoiceModule } from './modules/invoice/invoice.module';
     UploadModule,
     ServicesModule,
     InvoiceModule,
+    ManagementModule,
   ],
   controllers: [],
   providers: [
