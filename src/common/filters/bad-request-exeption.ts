@@ -17,7 +17,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const lang = this.detectLang(request);
     const message = this.extractMessage(exception, lang);
 
-    response.status(400).json({ success: false, message });
+    // Statusni saqlaymiz: BadRequest → 400, NotFound → 404, Conflict → 409,
+    // Unprocessable → 422. Invoice contract 404/409/422 ga tayanadi.
+    const status = exception.getStatus?.() ?? 400;
+
+    response.status(status).json({ success: false, message });
   }
 
   private detectLang(request: Request): string {

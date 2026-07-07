@@ -74,6 +74,7 @@ model Order {
   financeTransactions FinanceTransaction[]
   hashtags            Hashtag[]
   statusHistory       OrderStatusHistory[]
+  invoice             Invoice?
 }
 
 model OrderStatusHistory {
@@ -261,6 +262,62 @@ model FinanceTransaction {
   handedOverByName String?   @map("handed_over_by_name") @db.VarChar(128)
 
   @@map("finance_transaction")
+}
+
+model Service {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name         String  @db.VarChar(128)
+  description  String? @db.VarChar(256)
+  defaultPrice Int?    @map("default_price")
+
+  invoiceItems InvoiceItem[]
+
+  @@map("service")
+}
+
+model Invoice {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  orderId String @unique @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  isPercentDiscount Boolean @default(false) @map("is_percent_discount")
+  discountValue     Float   @default(0) @map("discount_value")
+  comment           String? @db.VarChar(1024)
+
+  items InvoiceItem[]
+
+  @@map("invoice")
+}
+
+model InvoiceItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoiceId String  @map("invoice_id") @db.Uuid
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Xizmatga bog'lanish — xizmat o'chirilsa ham item saqlanadi (snapshot).
+  serviceId          String?  @map("service_id") @db.Uuid
+  service            Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  serviceName        String   @map("service_name") @db.VarChar(128)
+  serviceDescription String?  @map("service_description") @db.VarChar(256)
+
+  // Client yuborgan tartibni saqlaydi — javob doim bir xil tartibda qaytadi.
+  position Int @default(0)
+
+  price             Int
+  quantity          Int
+  isPercentDiscount Boolean @default(false) @map("is_percent_discount")
+  discountValue     Float   @default(0) @map("discount_value")
+
+  @@map("invoice_item")
 }
 
 enum Role {
