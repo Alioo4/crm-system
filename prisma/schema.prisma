@@ -39,18 +39,22 @@ model Order {
   managerId    String? @map("manager_id") @db.Uuid
   managerName  String? @map("manager_name") @db.VarChar(128)
   managerphone String? @map("manager_phone") @db.VarChar(16)
+  managerAssignedAt DateTime? @map("manager_assigned_at")
 
-  zamirId    String? @map("zamir_id") @db.Uuid
-  zamirName  String? @map("zamir_name") @db.VarChar(128)
-  zamirPhone String? @map("zamir_phone") @db.VarChar(16)
+  zamirId         String?   @map("zamir_id") @db.Uuid
+  zamirName       String?   @map("zamir_name") @db.VarChar(128)
+  zamirPhone      String?   @map("zamir_phone") @db.VarChar(16)
+  zamirAssignedAt DateTime? @map("zamir_assigned_at")
 
-  zavodId    String? @map("zavod_id") @db.Uuid
-  zavodName  String? @map("zavod_name") @db.VarChar(128)
-  zavodPhone String? @map("zavod_phone") @db.VarChar(16)
+  zavodId         String?   @map("zavod_id") @db.Uuid
+  zavodName       String?   @map("zavod_name") @db.VarChar(128)
+  zavodPhone      String?   @map("zavod_phone") @db.VarChar(16)
+  zavodAssignedAt DateTime? @map("zavod_assigned_at")
 
-  ustId    String? @map("ust_id") @db.Uuid
-  ustName  String? @map("ust_name") @db.VarChar(128)
-  ustPhone String? @map("ust_phone") @db.VarChar(16)
+  ustId         String?   @map("ust_id") @db.Uuid
+  ustName       String?   @map("ust_name") @db.VarChar(128)
+  ustPhone      String?   @map("ust_phone") @db.VarChar(16)
+  ustAssignedAt DateTime? @map("ust_assigned_at")
 
   total      Int?
   prePayment Int? @map("pre_payment")
