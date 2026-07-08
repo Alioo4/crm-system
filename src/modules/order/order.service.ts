@@ -22,6 +22,7 @@ import {
   sendTelegramOrderDone,
   sendTelegramOrderForReport,
 } from 'src/common/utils/send-telegram.bot';
+import { nowInTashkent } from 'src/common/utils/time.utils';
 
 @Injectable()
 export class OrderService {
@@ -685,21 +686,21 @@ export class OrderService {
         updatePromises.push(
           this.prisma.order.update({
             where: { id },
-            data: { zamirId: userId },
+            data: { zamirId: userId, zamirAssignedAt: nowInTashkent() },
           }),
         );
       } else if (role === Status.USTANOVCHIK && !ustId) {
         updatePromises.push(
           this.prisma.order.update({
             where: { id },
-            data: { ustId: userId },
+            data: { ustId: userId, ustAssignedAt: nowInTashkent() },
           }),
         );
       } else if (role === Status.ZAVOD && !zavodId) {
         updatePromises.push(
           this.prisma.order.update({
             where: { id },
-            data: { zavodId: userId },
+            data: { zavodId: userId, zavodAssignedAt: nowInTashkent() },
           }),
         );
       } else if (zamirId || ustId || zavodId) {
@@ -737,21 +738,21 @@ export class OrderService {
         updatePromises.push(
           this.prisma.order.update({
             where: { id },
-            data: { zamirId: null },
+            data: { zamirId: null, zamirAssignedAt: null},
           }),
         );
       } else if (role === Status.USTANOVCHIK && ustId === userId) {
         updatePromises.push(
           this.prisma.order.update({
             where: { id },
-            data: { ustId: null },
+            data: { ustId: null, ustAssignedAt: null  },
           }),
         );
       } else if (role === Status.ZAVOD && zavodId === userId) {
         updatePromises.push(
           this.prisma.order.update({
             where: { id },
-            data: { zavodId: null },
+            data: { zavodId: null, zavodAssignedAt: null  },
           }),
         );
       } else if (

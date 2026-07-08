@@ -24,6 +24,11 @@ export enum ManagementPeriod {
   CUSTOM = 'custom',
 }
 
+export enum ManagementSort {
+  OLD = 'old',
+  NEW = 'new',
+}
+
 export class ManagementOrdersQueryDto {
   @ApiProperty({
     enum: ManagementTab,
@@ -41,6 +46,16 @@ export class ManagementOrdersQueryDto {
   @IsEnum(ManagementPeriod)
   @IsOptional()
   period?: ManagementPeriod = ManagementPeriod.ALL;
+
+  @ApiPropertyOptional({
+    enum: ManagementSort,
+    default: ManagementSort.NEW,
+    description:
+      "old = createdAt bo'yicha (eski orderlar, assign date yo'q); new = eng oxirgi assign vaqti bo'yicha",
+  })
+  @IsEnum(ManagementSort)
+  @IsOptional()
+  sort?: ManagementSort = ManagementSort.NEW;
 
   @ApiPropertyOptional({ example: '2026-06-01' })
   @IsDateString()

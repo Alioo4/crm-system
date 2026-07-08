@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   ManagementOrdersQueryDto,
   ManagementPeriod,
+  ManagementSort,
   ManagementTab,
 } from './dto/management-orders-query.dto';
 
@@ -45,12 +46,16 @@ const orderSelect = {
   createdAt: true,
   managerId: true,
   managerName: true,
+  managerAssignedAt: true,
   zamirId: true,
   zamirName: true,
+  zamirAssignedAt: true,
   zavodId: true,
   zavodName: true,
+  zavodAssignedAt: true,
   ustId: true,
   ustName: true,
+  ustAssignedAt: true,
   region: { select: { name: true } },
   financeTransactions: {
     select: { type: true, amount: true, createdById: true },
@@ -119,16 +124,32 @@ export class ManagementService {
     let total: number;
 
     if (query.tab === ManagementTab.ASSIGNED) {
-      // createdAt real ustun → DB darajasida saralash + sahifalash.
       total = assignedCount;
-      const rows = await this.prisma.order.findMany({
-        where: assignedWhere,
-        select: orderSelect,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      });
-      orders = rows.map((o) => this.buildManagementOrder(o, ManagementTab.ASSIGNED));
+      const sort = query.sort ?? ManagementSort.NEW;
+
+      if (sort === ManagementSort.OLD) {
+        // old = eski orderlar (assign date yo'q) → createdAt bo'yicha, eng eskisi birinchi.
+        // createdAt real ustun → DB darajasida saralash + sahifalash.
+        const rows = await this.prisma.order.findMany({
+          where: assignedWhere,
+          select: orderSelect,
+          orderBy: { createdAt: 'asc' },
+          skip,
+          take: limit,
+        });
+        orders = rows.map((o) => this.buildManagementOrder(o, ManagementTab.ASSIGNED));
+      } else {
+        // new = eng oxirgi assign vaqti bo'yicha (4 ustundan eng kechi), yangisi birinchi.
+        // GREATEST(nullable ustunlar) Prisma orderBy'da yo'q → xotirada saralash (completed pattern'i).
+        const rows = await this.prisma.order.findMany({
+          where: assignedWhere,
+          select: orderSelect,
+        });
+        orders = rows
+          .sort((a, b) => this.effectiveAssignedAt(b) - this.effectiveAssignedAt(a))
+          .slice(skip, skip + limit)
+          .map((o) => this.buildManagementOrder(o, ManagementTab.ASSIGNED));
+      }
     } else {
       // doneAt hosila maydon → xotirada saralash + sahifalash (finance moduli pattern'i).
       total = completedCount;
@@ -185,6 +206,20 @@ export class ManagementService {
     if (role !== Role.ADMIN && role !== Role.MANAGER) {
       throw new ForbiddenException(MSG.PERMISSION_DENIED);
     }
+  }
+
+  // Order uchun effektiv assign vaqti = 4 rol assign vaqtidan eng kechi (max).
+  // Hech biri yo'q bo'lsa (eski orderlar) → createdAt fallback.
+  private effectiveAssignedAt(o: ManagementOrderRow): number {
+    const ts = [
+      o.managerAssignedAt,
+      o.zamirAssignedAt,
+      o.zavodAssignedAt,
+      o.ustAssignedAt,
+    ]
+      .filter((d): d is Date => d != null)
+      .map((d) => d.getTime());
+    return ts.length ? Math.max(...ts) : o.createdAt.getTime();
   }
 
   private buildManagementOrder(order: ManagementOrderRow, tab: ManagementTab) {
