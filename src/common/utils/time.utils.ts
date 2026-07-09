@@ -11,5 +11,7 @@ export function nowInTashkent(d = new Date()): string {
   }).formatToParts(d);
 
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+  // Store Tashkent wall-clock time. Prisma persists DateTime as UTC, so we tag the
+  // Tashkent-local parts with `Z` — the DB then holds the Tashkent time literally.
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}.000Z`;
 }
