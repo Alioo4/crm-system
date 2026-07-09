@@ -25,7 +25,7 @@ import {
 import { nowInTashkent } from 'src/common/utils/time.utils';
 
 // Bir foydalanuvchi o'ziga bir vaqtning o'zida biriktira oladigan buyurtmalarning maksimal soni.
-const ORDER_ASSIGN_LIMIT = 2;
+const ORDER_ASSIGN_LIMIT = 25;
 
 @Injectable()
 export class OrderService {
