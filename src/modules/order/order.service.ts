@@ -24,6 +24,9 @@ import {
 } from 'src/common/utils/send-telegram.bot';
 import { nowInTashkent } from 'src/common/utils/time.utils';
 
+// Bir foydalanuvchi o'ziga bir vaqtning o'zida biriktira oladigan buyurtmalarning maksimal soni.
+const ORDER_ASSIGN_LIMIT = 2;
+
 @Injectable()
 export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
@@ -633,6 +636,21 @@ export class OrderService {
   }
 
   async assignOrders(orderIds: string[], userId: string, role: string) {
+    // Rolga qarab tegishli maydon, status va assignedAt maydonini aniqlaymiz.
+    const roleConfig: Record<
+      string,
+      { field: 'zamirId' | 'ustId' | 'zavodId'; assignedAtField: string; status: Status }
+    > = {
+      [Status.ZAMIR]: { field: 'zamirId', assignedAtField: 'zamirAssignedAt', status: Status.ZAMIR },
+      [Status.USTANOVCHIK]: { field: 'ustId', assignedAtField: 'ustAssignedAt', status: Status.USTANOVCHIK },
+      [Status.ZAVOD]: { field: 'zavodId', assignedAtField: 'zavodAssignedAt', status: Status.ZAVOD },
+    };
+
+    const config = roleConfig[role];
+    if (!config) {
+      throw new BadRequestException(MSG.ORDER_ASSIGN_FORBIDDEN);
+    }
+
     const orders = await this.prisma.order.findMany({
       where: {
         id: { in: orderIds },
@@ -650,40 +668,29 @@ export class OrderService {
       throw new NotFoundException(MSG.ORDERS_NOT_FOUND);
     }
 
-    const updatePromises: Promise<any>[] = [];
-
+    // Yangi biriktiriladigan buyurtmalarni ajratamiz, band bo'lganlarini rad etamiz.
+    const idsToAssign: string[] = [];
     for (const order of orders) {
-      const { id, zamirId, ustId, zavodId } = order;
-
-      if (role === Status.ZAMIR && !zamirId) {
-        updatePromises.push(
-          this.prisma.order.update({
-            where: { id },
-            data: { zamirId: userId, zamirAssignedAt: nowInTashkent() },
-          }),
-        );
-      } else if (role === Status.USTANOVCHIK && !ustId) {
-        updatePromises.push(
-          this.prisma.order.update({
-            where: { id },
-            data: { ustId: userId, ustAssignedAt: nowInTashkent() },
-          }),
-        );
-      } else if (role === Status.ZAVOD && !zavodId) {
-        updatePromises.push(
-          this.prisma.order.update({
-            where: { id },
-            data: { zavodId: userId, zavodAssignedAt: nowInTashkent() },
-          }),
-        );
-      } else if (zamirId || ustId || zavodId) {
-        throw new BadRequestException(MSG.ORDER_ALREADY_ASSIGNED);
+      if (!order[config.field]) {
+        idsToAssign.push(order.id);
       } else {
-        throw new BadRequestException(MSG.ORDER_ASSIGN_FORBIDDEN);
+        throw new BadRequestException(MSG.ORDER_ALREADY_ASSIGNED);
       }
     }
 
-    await Promise.all(updatePromises);
+    // Foydalanuvchining hozirgi faol (o'z navbatidagi) buyurtmalari soni.
+    const currentAssignedCount = await this.prisma.order.count({
+      where: { [config.field]: userId, status: config.status },
+    });
+
+    if (currentAssignedCount + idsToAssign.length > ORDER_ASSIGN_LIMIT) {
+      throw new BadRequestException(MSG.ORDER_ASSIGN_LIMIT_EXCEEDED);
+    }
+
+    await this.prisma.order.updateMany({
+      where: { id: { in: idsToAssign } },
+      data: { [config.field]: userId, [config.assignedAtField]: nowInTashkent() },
+    });
 
     return new ResponseDto(true, 'Orders successfully assigned');
   }

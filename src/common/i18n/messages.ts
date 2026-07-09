@@ -12,6 +12,7 @@ export const MSG = {
   ORDER_ALREADY_ASSIGNED:   'ORDER_ALREADY_ASSIGNED',
   ORDER_ASSIGN_FORBIDDEN:   'ORDER_ASSIGN_FORBIDDEN',
   ORDER_UNASSIGN_FORBIDDEN: 'ORDER_UNASSIGN_FORBIDDEN',
+  ORDER_ASSIGN_LIMIT_EXCEEDED: 'ORDER_ASSIGN_LIMIT_EXCEEDED',
 
   // Finance
   SALE_ALREADY_EXISTS:    'SALE_ALREADY_EXISTS',
@@ -64,6 +65,7 @@ const uz: Translations = {
   ORDER_ALREADY_ASSIGNED:   "Bu buyurtma boshqa foydalanuvchiga biriktirilgan",
   ORDER_ASSIGN_FORBIDDEN:   "Buyurtmani biriktirish uchun ruxsatingiz yo'q",
   ORDER_UNASSIGN_FORBIDDEN: "Buyurtmadan ajratish uchun ruxsatingiz yo'q",
+  ORDER_ASSIGN_LIMIT_EXCEEDED: "Bir vaqtda 25 tadan ortiq buyurtmani o'zingizga biriktira olmaysiz",
 
   SALE_ALREADY_EXISTS:  "Umumiy savdo kiritilgan, iltimos boshqa savdo turini kiriting",
   SALE_REQUIRED:        "Umumiy miqdor kiriting",
@@ -107,6 +109,7 @@ const ru: Translations = {
   ORDER_ALREADY_ASSIGNED:   "Этот заказ уже назначен другому пользователю",
   ORDER_ASSIGN_FORBIDDEN:   "У вас нет прав для назначения заказа",
   ORDER_UNASSIGN_FORBIDDEN: "У вас нет прав для снятия назначения заказа",
+  ORDER_ASSIGN_LIMIT_EXCEEDED: "Нельзя назначить себе более 25 заказов одновременно",
 
   SALE_ALREADY_EXISTS:  "Общая сумма продажи уже введена, введите другой тип",
   SALE_REQUIRED:        "Введите общую сумму",
