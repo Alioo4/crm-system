@@ -68,6 +68,23 @@ const orderSelect = {
 
 type ManagementOrderRow = Prisma.OrderGetPayload<{ select: typeof orderSelect }>;
 
+// Ish oqimi pipeline'i — indeks = bosqich tartibi. CANCEL pipeline'da yo'q (indexOf → -1).
+const PIPELINE: Status[] = [
+  Status.MANAGER,
+  Status.ZAMIR,
+  Status.ZAVOD,
+  Status.USTANOVCHIK,
+  Status.DONE,
+];
+
+// Har ishchi sloti va unga mos bosqich (status).
+const SLOTS = [
+  { id: 'managerId', stage: Status.MANAGER },
+  { id: 'zamirId', stage: Status.ZAMIR },
+  { id: 'zavodId', stage: Status.ZAVOD },
+  { id: 'ustId', stage: Status.USTANOVCHIK },
+] as const;
+
 @Injectable()
 export class ManagementService {
   constructor(private readonly prisma: PrismaService) {}
@@ -84,40 +101,60 @@ export class ManagementService {
     const dateRange = this.resolveDateRange(query);
     const userIds = query.userIds?.length ? query.userIds : null;
 
-    const workerFilter: Prisma.OrderWhereInput = userIds
-      ? {
-          OR: [
-            { managerId: { in: userIds } },
-            { zamirId: { in: userIds } },
-            { zavodId: { in: userIds } },
-            { ustId: { in: userIds } },
-          ],
-        }
-      : {};
+    // Har slotning o'z bosqichi (statusi) bor. matchId: userIds bo'lsa shu ishchilar,
+    // aks holda slot to'ldirilgan bo'lishi kifoya.
+    const matchId: Prisma.StringNullableFilter = userIds
+      ? { in: userIds }
+      : { not: null };
 
-    // assigned = biriktirilgan, hali Done/Cancel emas → sana order yaratilgan sanasi bo'yicha.
+    // assigned = ishchi sloti to'ldirilgan VA order aynan uning bosqichida (joriy navbat).
+    // Sana order yaratilgan sanasi bo'yicha (hozirgidek).
     const assignedWhere: Prisma.OrderWhereInput = {
-      ...workerFilter,
-      status: { notIn: [Status.DONE, Status.CANCEL] },
+      OR: SLOTS.map(
+        (s) => ({ [s.id]: matchId, status: s.stage }) as Prisma.OrderWhereInput,
+      ),
       ...(dateRange && { createdAt: dateRange }),
     };
 
-    // completed = Done → sana order DONE bo'lgan haqiqiy sana bo'yicha (OrderStatusHistory).
-    const completedWhere: Prisma.OrderWhereInput = {
-      ...workerFilter,
-      status: Status.DONE,
-      ...(dateRange && {
-        statusHistory: {
-          some: { toStatus: Status.DONE, createdAt: dateRange },
-        },
-      }),
-    };
+    // completed = ishchi bosqichidan yuqoriga o'tgan (yoki DONE) orderlar.
+    // userIds bo'lmasa order-darajasida faqat DONE. Sana filtri/saralashi bosqich
+    // tugash vaqti (stageCompletedAt) bo'yicha bo'lgani uchun xotirada bajariladi.
+    const completedStatusWhere: Prisma.OrderWhereInput = userIds
+      ? {
+          OR: SLOTS.map(
+            (s) =>
+              ({
+                [s.id]: { in: userIds },
+                status: { in: this.statusesAfter(s.stage) },
+              }) as Prisma.OrderWhereInput,
+          ),
+        }
+      : { status: Status.DONE };
 
     // counts — har doim ikkala tab uchun (TZ 3.1).
-    const [assignedCount, completedCount] = await Promise.all([
-      this.prisma.order.count({ where: assignedWhere }),
-      this.prisma.order.count({ where: completedWhere }),
-    ]);
+    const assignedCount = await this.prisma.order.count({ where: assignedWhere });
+
+    // Completed rowlarni sana filtri berilganda (yoki completed tab tanlanganda) yuklab,
+    // bosqich-tugash vaqtini hisoblaymiz; aks holda arzon count() kifoya.
+    let completedProcessed: { o: ManagementOrderRow; t: Date }[] | null = null;
+    let completedCount: number;
+    if (dateRange || query.tab === ManagementTab.COMPLETED) {
+      const rows = await this.prisma.order.findMany({
+        where: completedStatusWhere,
+        select: orderSelect,
+      });
+      completedProcessed = rows
+        .map((o) => ({ o, t: this.stageCompletedAt(o, userIds) }))
+        .filter(
+          (x): x is { o: ManagementOrderRow; t: Date } =>
+            x.t !== null && (!dateRange || this.inRange(x.t, dateRange)),
+        );
+      completedCount = completedProcessed.length;
+    } else {
+      completedCount = await this.prisma.order.count({
+        where: completedStatusWhere,
+      });
+    }
     const counts = { assigned: assignedCount, completed: completedCount };
 
     let orders: ReturnType<typeof this.buildManagementOrder>[];
@@ -151,20 +188,15 @@ export class ManagementService {
           .map((o) => this.buildManagementOrder(o, ManagementTab.ASSIGNED));
       }
     } else {
-      // doneAt hosila maydon → xotirada saralash + sahifalash (finance moduli pattern'i).
+      // completed = bosqich-tugash vaqti (stageCompletedAt) bo'yicha desc saralash + sahifalash.
+      // completedProcessed yuqorida hisoblangan (completed tab → doim to'ldiriladi).
       total = completedCount;
-      const rows = await this.prisma.order.findMany({
-        where: completedWhere,
-        select: orderSelect,
-      });
-      orders = rows
-        .map((o) => this.buildManagementOrder(o, ManagementTab.COMPLETED))
-        .sort((a, b) => {
-          const av = a.doneAt ? a.doneAt.getTime() : 0;
-          const bv = b.doneAt ? b.doneAt.getTime() : 0;
-          return bv - av;
-        })
-        .slice(skip, skip + limit);
+      orders = completedProcessed!
+        .sort((a, b) => b.t.getTime() - a.t.getTime())
+        .slice(skip, skip + limit)
+        .map((x) =>
+          this.buildManagementOrder(x.o, ManagementTab.COMPLETED, x.t),
+        );
     }
 
     return new ResponseDto(
@@ -222,7 +254,57 @@ export class ManagementService {
     return ts.length ? Math.max(...ts) : o.createdAt.getTime();
   }
 
-  private buildManagementOrder(order: ManagementOrderRow, tab: ManagementTab) {
+  // Pipeline'dagi bosqich tartibi (CANCEL → -1).
+  private statusRank(s: Status): number {
+    return PIPELINE.indexOf(s);
+  }
+
+  // Berilgan bosqichdan keyingi statuslar (DONE ham).
+  private statusesAfter(stage: Status): Status[] {
+    return PIPELINE.slice(PIPELINE.indexOf(stage) + 1);
+  }
+
+  private inRange(d: Date, r: { gte?: Date; lte?: Date }): boolean {
+    return (!r.gte || d >= r.gte) && (!r.lte || d <= r.lte);
+  }
+
+  // Ishchi bosqichi tugagan vaqt = eng yuqori "o'tib bo'lingan" slot bosqichidan keyingi
+  // birinchi statusHistory o'tishi. userIds berilsa faqat shu ishchilar slotlari hisobga olinadi.
+  private stageCompletedAt(
+    order: ManagementOrderRow,
+    userIds: string[] | null,
+  ): Date | null {
+    const orderRank = this.statusRank(order.status);
+    if (orderRank < 0) return null; // CANCEL
+
+    const slots = [
+      { id: order.managerId, stage: Status.MANAGER },
+      { id: order.zamirId, stage: Status.ZAMIR },
+      { id: order.zavodId, stage: Status.ZAVOD },
+      { id: order.ustId, stage: Status.USTANOVCHIK },
+    ];
+
+    const passed = slots.filter(
+      (s) =>
+        s.id &&
+        (!userIds || userIds.includes(s.id)) &&
+        this.statusRank(s.stage) < orderRank,
+    );
+    if (!passed.length) return null;
+
+    const highestRank = Math.max(...passed.map((s) => this.statusRank(s.stage)));
+    // statusHistory asc tartibda → .find eng erta o'tishni beradi.
+    const hist = (order.statusHistory ?? []).find(
+      (x) => this.statusRank(x.toStatus) > highestRank,
+    );
+    return hist ? hist.createdAt : order.createdAt;
+  }
+
+  private buildManagementOrder(
+    order: ManagementOrderRow,
+    tab: ManagementTab,
+    completedAt: Date | null = null,
+  ) {
     const txs: TxLite[] = order.financeTransactions;
 
     const totalAmount = this.calcOrderAmount(txs);
@@ -235,11 +317,8 @@ export class ManagementService {
       const h = history.find((x) => x.toStatus === status);
       return h ? h.createdAt : order.createdAt;
     };
-    // Oxirgi DONE'ga o'tish sanasi (asc tartibda kelgani uchun oxirgisi).
-    const doneHistory = history.filter((x) => x.toStatus === Status.DONE);
-    const doneAt: Date | null = doneHistory.length
-      ? doneHistory[doneHistory.length - 1].createdAt
-      : null;
+    // doneAt = ishchi bosqichi tugagan vaqt (completed tab uchun getOrders'dan uzatiladi).
+    const doneAt: Date | null = completedAt;
 
     const workerDefs: {
       userId: string | null;
