@@ -35,16 +35,34 @@ export class FinanceService {
 
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
-    const transactions = await this.prisma.financeTransaction.findMany({
+    // Order-asosli: orderlarni createdAt bo'yicha olib, so'ng ularning
+    // financeTransaction larini (sanaga qaramay) hisoblaymiz.
+    const orders = await this.prisma.order.findMany({
       where: {
         ...(dateFilter && { createdAt: dateFilter }),
-        ...(query.userId && { createdById: query.userId }),
         ...(query.isNewOrder !== undefined && {
-          order: { isNewOrder: query.isNewOrder },
+          isNewOrder: query.isNewOrder,
         }),
       },
-      select: { type: true, method: true, amount: true, orderId: true },
+      select: {
+        financeTransactions: {
+          select: {
+            type: true,
+            method: true,
+            amount: true,
+            orderId: true,
+            createdById: true,
+          },
+        },
+      },
     });
+
+    // userId filtri (avvalgidek createdBy.id bo'yicha) xotirada qo'llanadi.
+    const transactions = orders.flatMap((o) =>
+      o.financeTransactions.filter(
+        (t) => !query.userId || t.createdById === query.userId,
+      ),
+    );
 
     const ordersCount = new Set(transactions.map((t) => t.orderId)).size;
     const sales = this.calcSales(transactions);
@@ -89,7 +107,6 @@ export class FinanceService {
       }),
     };
 
-    // ── Summary: barcha transaksiyalardan kichik select ───────────────────────
     const allTxs = await this.prisma.financeTransaction.findMany({
       where,
       select: { orderId: true, type: true, method: true, amount: true },
@@ -99,7 +116,6 @@ export class FinanceService {
     const total = allOrderIds.length;
     const pagedOrderIds = allOrderIds.slice(skip, skip + limit);
 
-    // ── Items: faqat shu sahifadagi orderlar uchun to'liq ma'lumot ────────────
     const pagedTxs =
       pagedOrderIds.length > 0
         ? await this.prisma.financeTransaction.findMany({
@@ -144,8 +160,6 @@ export class FinanceService {
       { page, limit, total, totalPages: Math.ceil(total / limit) },
     );
   }
-
-  // ─── 3. Debt Orders ───────────────────────────────────────────────────────────
 
   async getDebtOrders(role: string, query: FinanceDateRangeDto) {
     this.checkAdmin(role);
