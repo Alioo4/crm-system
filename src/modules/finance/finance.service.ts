@@ -32,54 +32,42 @@ export class FinanceService {
 
   async getSummary(role: string, query: FinanceDateRangeDto) {
     this.checkAdmin(role);
-
+  
     const dateFilter = this.buildDateFilter(query.from, query.to);
-
-    // Order-asosli: orderlarni createdAt bo'yicha olib, so'ng ularning
-    // financeTransaction larini (sanaga qaramay) hisoblaymiz.
-    const orders = await this.prisma.order.findMany({
+  
+    const trade = await this.prisma.financeTransaction.findMany({
       where: {
+        type: FinanceTransactionType.SALE,
         ...(dateFilter && { createdAt: dateFilter }),
-        ...(query.isNewOrder !== undefined && {
-          isNewOrder: query.isNewOrder,
-        }),
+        ...(query.userId && { createdById: query.userId }),
+        order: { isNewOrder: query.isNewOrder },
       },
-      select: {
-        financeTransactions: {
-          select: {
-            type: true,
-            method: true,
-            amount: true,
-            orderId: true,
-            createdById: true,
-          },
-        },
-      },
+      distinct: ['orderId'],
+      select: { orderId: true },
     });
-
-    // userId filtri (avvalgidek createdBy.id bo'yicha) xotirada qo'llanadi.
-    const transactions = orders.flatMap((o) =>
-      o.financeTransactions.filter(
-        (t) => !query.userId || t.createdById === query.userId,
-      ),
-    );
-
-    const ordersCount = new Set(transactions.map((t) => t.orderId)).size;
+  
+    const orderIds = trade.map((t) => t.orderId);
+  
+    const transactions = orderIds.length
+      ? await this.prisma.financeTransaction.findMany({
+          where: { orderId: { in: orderIds } },
+          select: { orderId: true, type: true, method: true, amount: true },
+        })
+      : [];
+  
     const sales = this.calcSales(transactions);
     const payments = this.calcPayments(transactions);
-
+  
     return new ResponseDto(true, 'Successfully found!', {
       dateRange: { from: query.from ?? null, to: query.to ?? null },
       ...((query.userId || query.isNewOrder !== undefined) && {
         filter: {
           ...(query.userId && { userId: query.userId }),
-          ...(query.isNewOrder !== undefined && {
-            isNewOrder: query.isNewOrder,
-          }),
+          ...(query.isNewOrder !== undefined && { isNewOrder: query.isNewOrder }),
         },
       }),
       summary: {
-        ordersCount,
+        ordersCount: orderIds.length,
         sales,
         payments,
         debt: { totalDebt: sales.netSale - payments.totalReceived },
@@ -170,57 +158,119 @@ export class FinanceService {
 
     const dateFilter = this.buildDateFilter(query.from, query.to);
 
-    const orders = await this.prisma.order.findMany({
+    // ── 1-qadam: filtrlar financeTransaction (SALE) ustida ishlaydi ──────────
+    //    getSummary bilan bir xil mantiq: sana/userId/isNewOrder → orderIds
+    const saleTxs = await this.prisma.financeTransaction.findMany({
       where: {
+        type: FinanceTransactionType.SALE,
         ...(dateFilter && { createdAt: dateFilter }),
-        ...(query.isNewOrder !== undefined && {
-          isNewOrder: query.isNewOrder,
-        }),
+        ...(query.userId && { createdById: query.userId }),
+        order: { isNewOrder: query.isNewOrder },
       },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        status: true,
-        createdAt: true,
-        managerId: true,
-        managerName: true,
-        zamirId: true,
-        zamirName: true,
-        zavodId: true,
-        zavodName: true,
-        ustId: true,
-        ustName: true,
-        financeTransactions: {
-          select: { type: true, amount: true, createdById: true },
-        },
-      },
+      distinct: ['orderId'],
+      select: { orderId: true },
       orderBy: { createdAt: 'desc' },
     });
 
-    // ── Barcha qarzdor orderlar (summary uchun) ───────────────────────────────
-    const allDebtItems: ReturnType<typeof this.buildDebtItem>[] = [];
+    const orderIds = saleTxs.map((t) => t.orderId);
+
+    // ── 2-qadam: shu orderlarning BARCHA transaksiyalari (sanadan qat'i nazar)
+    const transactions = orderIds.length
+      ? await this.prisma.financeTransaction.findMany({
+          where: { orderId: { in: orderIds } },
+          select: {
+            orderId: true,
+            type: true,
+            amount: true,
+            createdById: true,
+          },
+        })
+      : [];
+
+    const txsByOrder = new Map<string, typeof transactions>();
+    for (const tx of transactions) {
+      const list = txsByOrder.get(tx.orderId);
+      if (list) list.push(tx);
+      else txsByOrder.set(tx.orderId, [tx]);
+    }
+
+    // ── 3-qadam: qarzdor orderlarni ajratish (summary barchasidan) ───────────
+    const debtOrders: {
+      orderId: string;
+      orderAmount: number;
+      paidAmount: number;
+      debtAmount: number;
+    }[] = [];
     let totalOrderAmount = 0;
     let totalPaidAmount = 0;
 
-    for (const order of orders) {
-      const item = this.buildDebtItem(order);
-      if (item.debtAmount <= 0) continue;
-      totalOrderAmount += item.orderAmount;
-      totalPaidAmount += item.paidAmount;
-      allDebtItems.push(item);
+    for (const orderId of orderIds) {
+      const totals = this.calcOrderTotals(txsByOrder.get(orderId) ?? []);
+      if (totals.debtAmount <= 0) continue;
+      totalOrderAmount += totals.orderAmount;
+      totalPaidAmount += totals.paidAmount;
+      debtOrders.push({ orderId, ...totals });
     }
 
-    const total = allDebtItems.length;
-    const pagedItems = allDebtItems.slice(skip, skip + limit);
+    const total = debtOrders.length;
+    const paged = debtOrders.slice(skip, skip + limit);
+
+    const orders = paged.length
+      ? await this.prisma.order.findMany({
+          where: { id: { in: paged.map((d) => d.orderId) } },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            status: true,
+            createdAt: true,
+            managerId: true,
+            managerName: true,
+            zamirId: true,
+            zamirName: true,
+            zavodId: true,
+            zavodName: true,
+            ustId: true,
+            ustName: true,
+          },
+        })
+      : [];
+
+    const orderMap = new Map(orders.map((o) => [o.id, o]));
+
+    const items = paged.flatMap((debt) => {
+      const order = orderMap.get(debt.orderId);
+      if (!order) return [];
+
+      return [
+        {
+          orderId: order.id,
+          client: { id: order.id, name: order.name, phone: order.phone },
+          orderAmount: debt.orderAmount,
+          paidAmount: debt.paidAmount,
+          debtAmount: debt.debtAmount,
+          status: order.status,
+          createdAt: order.createdAt,
+          workers: this.buildWorkers(
+            order,
+            txsByOrder.get(debt.orderId) ?? [],
+          ),
+        },
+      ];
+    });
 
     return new ResponseDto(
       true,
       'Successfully found!',
       {
         dateRange: { from: query.from ?? null, to: query.to ?? null },
-        ...(query.isNewOrder !== undefined && {
-          filter: { isNewOrder: query.isNewOrder },
+        ...((query.userId || query.isNewOrder !== undefined) && {
+          filter: {
+            ...(query.userId && { userId: query.userId }),
+            ...(query.isNewOrder !== undefined && {
+              isNewOrder: query.isNewOrder,
+            }),
+          },
         }),
         summary: {
           ordersCount: total,
@@ -228,7 +278,7 @@ export class FinanceService {
           totalPaidAmount,
           totalDebt: totalOrderAmount - totalPaidAmount,
         },
-        items: pagedItems,
+        items,
       },
       { page, limit, total, totalPages: Math.ceil(total / limit) },
     );
@@ -432,47 +482,51 @@ export class FinanceService {
     };
   }
 
-  private buildDebtItem(order: {
-    id: string;
-    name: string | null;
-    phone: string | null;
-    status: string;
-    createdAt: Date;
-    managerId: string | null;
-    managerName: string | null;
-    zamirId: string | null;
-    zamirName: string | null;
-    zavodId: string | null;
-    zavodName: string | null;
-    ustId: string | null;
-    ustName: string | null;
-    financeTransactions: {
+  // Bitta orderning transaksiyalaridan summa / to'langan / qarz
+  private calcOrderTotals(
+    txs: { type: FinanceTransactionType; amount: number }[],
+  ) {
+    const sales = this.calcSales(txs);
+
+    let paidAmount = 0;
+    for (const tx of txs) {
+      if (
+        tx.type === FinanceTransactionType.PREPAYMENT ||
+        tx.type === FinanceTransactionType.PAYMENT
+      ) {
+        paidAmount += tx.amount;
+      } else if (tx.type === FinanceTransactionType.REFUND) {
+        paidAmount -= tx.amount;
+      }
+    }
+
+    return {
+      orderAmount: sales.netSale,
+      paidAmount,
+      debtAmount: sales.netSale - paidAmount,
+    };
+  }
+
+  private buildWorkers(
+    order: {
+      managerId: string | null;
+      managerName: string | null;
+      zamirId: string | null;
+      zamirName: string | null;
+      zavodId: string | null;
+      zavodName: string | null;
+      ustId: string | null;
+      ustName: string | null;
+    },
+    txs: {
       type: FinanceTransactionType;
       amount: number;
       createdById: string | null;
-    }[];
-  }) {
-    const txs = order.financeTransactions;
-
-    const orderAmount = txs.reduce((sum, tx) => {
-      if (tx.type === FinanceTransactionType.SALE) return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.SALE_ADDITION)
-        return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.SALE_CANCEL)
-        return sum - tx.amount;
-      return sum;
-    }, 0);
-
-    const paidAmount = txs.reduce((sum, tx) => {
-      if (tx.type === FinanceTransactionType.PREPAYMENT) return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.PAYMENT) return sum + tx.amount;
-      if (tx.type === FinanceTransactionType.REFUND) return sum - tx.amount;
-      return sum;
-    }, 0);
-
+    }[],
+  ) {
     const workerAmountMap = this.buildWorkerAmountMap(txs);
 
-    const workers = [
+    return [
       { id: order.managerId, name: order.managerName, role: 'MANAGER' },
       { id: order.zamirId, name: order.zamirName, role: 'ZAMIR' },
       { id: order.zavodId, name: order.zavodName, role: 'ZAVOD' },
@@ -480,17 +534,6 @@ export class FinanceService {
     ]
       .filter((w) => w.id !== null)
       .map((w) => ({ ...w, amount: workerAmountMap.get(w.id!) ?? 0 }));
-
-    return {
-      orderId: order.id,
-      client: { id: order.id, name: order.name, phone: order.phone },
-      orderAmount,
-      paidAmount,
-      debtAmount: orderAmount - paidAmount,
-      status: order.status,
-      createdAt: order.createdAt,
-      workers,
-    };
   }
 
   private buildWorkerAmountMap(
